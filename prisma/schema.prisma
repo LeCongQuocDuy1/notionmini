@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  password  String
+  name      String?
+  documents Document[]
+  tags      Tag[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Document {
+  id           String   @id @default(uuid())
+  title        String   @default("Untitled")
+  content      String?  @db.Text
+  icon         String?
+  coverImage   String?
+  isArchived   Boolean  @default(false)
+  isPublished  Boolean  @default(false)
+  
+  // Quan hệ trang lồng trang (Recursive)
+  parentDocumentId String?
+  parentDocument   Document?  @relation("ParentChild", fields: [parentDocumentId], references: [id])
+  childDocuments   Document[] @relation("ParentChild")
+
+  // Quan hệ với User
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Quan hệ Nhiều-Nhiều với Tag
+  tags DocumentTag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([parentDocumentId])
+}
+
+model Tag {
+  id     String @id @default(uuid())
+  name   String
+  color  String @default("gray")
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  documents DocumentTag[]
+
+  @@unique([name, userId])
+}
+
+// Bảng trung gian để nối Document và Tag (Manual Junction Table để dễ kiểm soát)
+model DocumentTag {
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  tagId      String
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, tagId])
+}

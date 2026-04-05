@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm init:*)",
+      "Bash(npx --no prisma init)",
+      "Bash(curl -s http://localhost:5000/health)",
+      "Bash(powershell -Command \"Get-Service -Name 'postgresql*' | Select-Object Name, Status\")",
+      "Bash(git init:*)",
+      "Bash(git remote:*)",
+      "Bash(git add:*)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Hi\\Desktop\\notionmini"
+    ]
+  }
+}
