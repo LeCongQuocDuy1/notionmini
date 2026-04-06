@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
@@ -22,6 +22,15 @@ app.use('/api/v1', routes);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Global error handler (phải đặt sau tất cả routes)
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  if (err.name === 'SyntaxError') {
+    res.status(400).json({ message: 'Request body không phải JSON hợp lệ' });
+    return;
+  }
+  res.status(500).json({ message: 'Internal server error' });
 });
 
 app.listen(PORT, () => {

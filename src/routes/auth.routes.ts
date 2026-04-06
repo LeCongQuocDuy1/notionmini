@@ -12,7 +12,7 @@ const router = Router();
 
 /**
  * @swagger
- * /api/v1/auth/register:
+ * /auth/register:
  *   post:
  *     summary: Đăng ký tài khoản mới
  *     tags: [Auth]
@@ -46,7 +46,7 @@ router.post('/register', authController.register);
 
 /**
  * @swagger
- * /api/v1/auth/login:
+ * /auth/login:
  *   post:
  *     summary: Đăng nhập và nhận JWT token
  *     tags: [Auth]
