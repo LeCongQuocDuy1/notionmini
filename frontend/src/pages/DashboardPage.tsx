@@ -1,36 +1,33 @@
 import { useAuthStore } from '../stores/useAuthStore';
+import { useDocumentStore } from '../stores/useDocumentStore';
+import Sidebar from '../components/sidebar/Sidebar';
 
 export default function DashboardPage() {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
+  const { activeDocumentId } = useDocumentStore();
 
   return (
-    <div className="min-h-screen bg-[#191919] text-white flex">
-      {/* Sidebar placeholder */}
-      <aside className="w-60 border-r border-neutral-800 p-4 flex flex-col">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
-            <span className="text-black font-bold text-xs">N</span>
-          </div>
-          <span className="text-sm font-medium truncate">{user?.name ?? user?.email}</span>
-        </div>
-        <p className="text-neutral-500 text-xs">Sidebar sẽ được xây dựng ở Giai đoạn 6</p>
-        <div className="mt-auto">
-          <button
-            onClick={logout}
-            className="w-full text-left text-neutral-400 hover:text-white text-sm py-1.5 transition-colors"
-          >
-            Đăng xuất
-          </button>
-        </div>
-      </aside>
+    <div className="h-screen bg-[#191919] text-white flex overflow-hidden">
+      <Sidebar />
 
-      {/* Main content placeholder */}
-      <main className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-4xl mb-4">👋</p>
-          <h1 className="text-2xl font-semibold mb-2">Chào mừng, {user?.name ?? 'bạn'}!</h1>
-          <p className="text-neutral-400 text-sm">Chọn hoặc tạo một trang để bắt đầu.</p>
-        </div>
+      {/* Main content */}
+      <main className="flex-1 flex items-center justify-center overflow-auto">
+        {activeDocumentId ? (
+          // Phase 7: Editor sẽ render ở đây
+          <div className="text-neutral-500 text-sm">
+            Editor sẽ được xây dựng ở Giai đoạn 7
+          </div>
+        ) : (
+          <div className="text-center">
+            <p className="text-5xl mb-4">📄</p>
+            <h1 className="text-xl font-semibold mb-2 text-neutral-200">
+              Chào mừng, {user?.name ?? 'bạn'}!
+            </h1>
+            <p className="text-neutral-500 text-sm">
+              Chọn một trang từ sidebar hoặc tạo trang mới.
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );
