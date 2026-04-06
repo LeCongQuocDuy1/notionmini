@@ -12,7 +12,7 @@ notionmini/
 
 - **Mục tiêu:** Cải thiện trình độ từ Junior lên Mid-level.
 - **Backend Stack:** Node.js, Express, TypeScript, PostgreSQL, Prisma, Swagger, Zod.
-- **Frontend Stack:** React, TypeScript, Vite, Tailwind CSS.
+- **Frontend Stack:** React, TypeScript, Vite, Tailwind CSS, Zustand, React Query, React Router.
 - **Mô hình Backend:** Controller - Service - Repository (Clean Architecture).
 
 ## 2. Database Schema (Prisma)
@@ -22,6 +22,12 @@ notionmini/
 - **Tag**: Nhãn phân loại (Many-to-Many với Document thông qua bảng nối DocumentTag).
 
 ## 3. Lộ trình phát triển (Roadmap)
+
+---
+
+### BACKEND
+
+---
 
 ### ✅ Giai đoạn 1: Hệ thống Xác thực (Authentication) - HOÀN THÀNH
 
@@ -52,12 +58,36 @@ notionmini/
 - Thùng rác: API khôi phục (restore) hoặc xóa vĩnh viễn ghi chú.
 - Swagger: Cập nhật JSDoc đầy đủ cho tất cả endpoint.
 
-### Giai đoạn 5: Frontend Development (ĐANG TIẾN HÀNH)
+---
 
-- **Login Page:** Form đăng nhập, gọi `POST /api/v1/auth/login`, lưu JWT vào localStorage.
-- **Dashboard Layout:** Sidebar trái (danh sách document), vùng nội dung chính.
-- **Sidebar:** Hiển thị cây document, nút tạo mới, nút vào thùng rác.
-- **Integration:** Axios/fetch gọi Backend API, xử lý auth token trong header.
+### FRONTEND
+
+---
+
+### ✅ Giai đoạn 5: Auth & Core (ĐANG TIẾN HÀNH)
+
+- **Axios Setup:** `frontend/src/lib/axios.ts` — baseURL + interceptor tự động đính kèm JWT.
+- **Auth Store:** `frontend/src/stores/useAuthStore.ts` — Zustand quản lý user, token, isAuthenticated.
+- **Pages:** LoginPage, RegisterPage — giao diện tối giản với Tailwind CSS.
+- **Routing:** App.tsx với Protected Routes (chỉ vào Dashboard nếu đã đăng nhập).
+
+### Giai đoạn 6: Navigation
+
+- **Recursive Sidebar:** Component sidebar hiển thị cây document đệ quy.
+- **Expand/Collapse:** Toggle mở/đóng từng nhánh document.
+- **Create Page:** Nút tạo trang mới từ sidebar.
+
+### Giai đoạn 7: Editor
+
+- **Block-based Editor:** Vùng soạn thảo nội dung document.
+- **Auto-save (Debounce):** Tự động lưu sau khi user dừng gõ.
+- **Cover/Icon Image:** Upload hoặc chọn cover và icon cho document.
+
+### Giai đoạn 8: Features
+
+- **Tagging UI:** Giao diện gắn/gỡ tag cho document.
+- **Trash Management:** Xem và khôi phục document trong thùng rác.
+- **Global Search (Cmd+K):** Tìm kiếm nhanh toàn bộ document.
 
 ## 4. Quy tắc Code
 
@@ -70,5 +100,7 @@ notionmini/
 
 ### Frontend (`frontend/`)
 1. Sử dụng React functional components + hooks.
-2. Styling bằng Tailwind CSS utility classes.
-3. Chạy dev: `cd frontend && npm run dev`
+2. State toàn cục bằng Zustand, server state bằng React Query.
+3. Styling bằng Tailwind CSS utility classes.
+4. Gọi API qua Axios instance (không dùng fetch trực tiếp).
+5. Chạy dev: `cd frontend && npm run dev`
