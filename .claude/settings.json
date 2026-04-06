@@ -7,10 +7,22 @@
       "Bash(powershell -Command \"Get-Service -Name 'postgresql*' | Select-Object Name, Status\")",
       "Bash(git init:*)",
       "Bash(git remote:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(node -e \"const p = require\\('@prisma/client'\\); console.log\\(Object.keys\\(p\\).slice\\(0,10\\)\\)\")",
+      "Bash(find /c/Users/Hi/Desktop/notionmini/src -name \".gitkeep\" -delete)",
+      "Bash(curl -s -X POST http://localhost:5000/api/v1/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"test@example.com\",\"password\":\"123456\",\"name\":\"Test User\"}')",
+      "Bash(node -e \"const p = require\\('@prisma/client'\\); console.log\\(Object.keys\\(p\\)\\)\")",
+      "Bash(grep -r \"export.*PrismaClient\" node_modules/@prisma/client/*.d.ts)",
+      "Bash(ls node_modules/@prisma/client/*.d.ts)",
+      "Bash(pkill -f \"ts-node-dev\")",
+      "Read(//tmp/**)",
+      "Bash(git pull:*)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\Hi\\Desktop\\notionmini"
+      "C:\\Users\\Hi\\Desktop\\notionmini",
+      "\\tmp"
     ]
   }
 }
