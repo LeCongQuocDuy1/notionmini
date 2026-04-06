@@ -18,7 +18,10 @@
       "Bash(ls node_modules/@prisma/client/*.d.ts)",
       "Bash(pkill -f \"ts-node-dev\")",
       "Read(//tmp/**)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(mkdir backend:*)",
+      "Bash(cp -r src prisma .env .gitignore package.json package-lock.json tsconfig.json prisma.config.ts README.md backend/)",
+      "Bash(npm create:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Hi\\Desktop\\notionmini",
