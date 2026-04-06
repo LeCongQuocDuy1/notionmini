@@ -1,6 +1,7 @@
 import { useAuthStore } from '../stores/useAuthStore';
 import { useDocumentStore } from '../stores/useDocumentStore';
 import Sidebar from '../components/sidebar/Sidebar';
+import DocumentEditor from '../components/editor/DocumentEditor';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -11,14 +12,11 @@ export default function DashboardPage() {
       <Sidebar />
 
       {/* Main content */}
-      <main className="flex-1 flex items-center justify-center overflow-auto">
+      <main className="flex-1 flex overflow-auto">
         {activeDocumentId ? (
-          // Phase 7: Editor sẽ render ở đây
-          <div className="text-neutral-500 text-sm">
-            Editor sẽ được xây dựng ở Giai đoạn 7
-          </div>
+          <DocumentEditor key={activeDocumentId} documentId={activeDocumentId} />
         ) : (
-          <div className="text-center">
+          <div className="flex-1 flex flex-col items-center justify-center">
             <p className="text-5xl mb-4">📄</p>
             <h1 className="text-xl font-semibold mb-2 text-neutral-200">
               Chào mừng, {user?.name ?? 'bạn'}!

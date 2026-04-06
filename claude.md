@@ -64,20 +64,20 @@ notionmini/
 
 ---
 
-### ✅ Giai đoạn 5: Auth & Core (ĐANG TIẾN HÀNH)
+### ✅ Giai đoạn 5: Auth & Core - HOÀN THÀNH
 
 - **Axios Setup:** `frontend/src/lib/axios.ts` — baseURL + interceptor tự động đính kèm JWT.
 - **Auth Store:** `frontend/src/stores/useAuthStore.ts` — Zustand quản lý user, token, isAuthenticated.
 - **Pages:** LoginPage, RegisterPage — giao diện tối giản với Tailwind CSS.
 - **Routing:** App.tsx với Protected Routes (chỉ vào Dashboard nếu đã đăng nhập).
 
-### Giai đoạn 6: Navigation
+### ✅ Giai đoạn 6: Navigation - HOÀN THÀNH
 
 - **Recursive Sidebar:** Component sidebar hiển thị cây document đệ quy.
 - **Expand/Collapse:** Toggle mở/đóng từng nhánh document.
 - **Create Page:** Nút tạo trang mới từ sidebar.
 
-### Giai đoạn 7: Editor
+### ✅ Giai đoạn 7: Editor - HOÀN THÀNH
 
 - **Block-based Editor:** Vùng soạn thảo nội dung document.
 - **Auto-save (Debounce):** Tự động lưu sau khi user dừng gõ.
