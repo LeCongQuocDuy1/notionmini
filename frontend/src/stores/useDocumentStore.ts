@@ -11,6 +11,8 @@ interface DocumentState {
   createDocument: (parentDocumentId?: string) => Promise<Document>;
   updateDocument: (id: string, data: Partial<Pick<DocumentDetail, 'title' | 'content' | 'icon' | 'coverImage'>>) => Promise<void>;
   archiveDocument: (id: string) => Promise<void>;
+  restoreDocument: (id: string) => Promise<void>;
+  deleteDocumentPermanently: (id: string) => Promise<void>;
   setActiveDocument: (id: string | null) => void;
 
   // Lấy document con trực tiếp của một node (dùng trong Recursive Sidebar)
@@ -36,7 +38,6 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     const { data } = await api.post<Document>('/documents', {
       parentDocumentId: parentDocumentId ?? null,
     });
-    // Thêm document mới vào store ngay lập tức (optimistic)
     set((state) => ({ documents: [...state.documents, data] }));
     return data;
   },
@@ -56,6 +57,16 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       documents: state.documents.filter((doc) => doc.id !== id),
       activeDocumentId: state.activeDocumentId === id ? null : state.activeDocumentId,
     }));
+  },
+
+  restoreDocument: async (id) => {
+    await api.patch(`/documents/${id}/restore`);
+    // Sau khi restore, fetch lại để cập nhật sidebar
+    await get().fetchDocuments();
+  },
+
+  deleteDocumentPermanently: async (id) => {
+    await api.delete(`/documents/${id}/permanent`);
   },
 
   setActiveDocument: (id) => set({ activeDocumentId: id }),

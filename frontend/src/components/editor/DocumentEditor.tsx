@@ -12,6 +12,7 @@ import {
 import { useDocumentStore } from '../../stores/useDocumentStore';
 import { useDebounce } from '../../hooks/useDebounce';
 import EditorHeader from './EditorHeader';
+import TaggingPanel from './TaggingPanel';
 import type { DocumentDetail } from '../../types';
 import api from '../../lib/axios';
 
@@ -162,6 +163,9 @@ export default function DocumentEditor({ documentId }: Props) {
 
       {/* Header (cover + icon + title) */}
       <EditorHeader document={document} />
+
+      {/* Tagging panel */}
+      <TaggingPanel document={document} onUpdate={setDocument} />
 
       {/* Editor body */}
       <EditorContent editor={editor} className="flex-1" />

@@ -83,7 +83,7 @@ notionmini/
 - **Auto-save (Debounce):** Tự động lưu sau khi user dừng gõ.
 - **Cover/Icon Image:** Upload hoặc chọn cover và icon cho document.
 
-### Giai đoạn 8: Features
+### ✅ Giai đoạn 8: Features - HOÀN THÀNH
 
 - **Tagging UI:** Giao diện gắn/gỡ tag cho document.
 - **Trash Management:** Xem và khôi phục document trong thùng rác.

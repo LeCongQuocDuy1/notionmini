@@ -127,6 +127,52 @@ export const archiveDocument = async (userId: string, documentId: string) => {
   });
 };
 
+export const restoreDocument = async (userId: string, documentId: string) => {
+  const doc = await prisma.document.findFirst({
+    where: { id: documentId, userId, isArchived: true },
+  });
+  if (!doc) throw new Error('Document không tồn tại hoặc chưa bị xóa');
+
+  return prisma.document.update({
+    where: { id: documentId },
+    data: { isArchived: false },
+    select: { id: true, title: true, isArchived: true },
+  });
+};
+
+export const deleteDocumentPermanently = async (userId: string, documentId: string) => {
+  const doc = await prisma.document.findFirst({
+    where: { id: documentId, userId },
+  });
+  if (!doc) throw new Error('Document không tồn tại');
+
+  await prisma.document.delete({ where: { id: documentId } });
+};
+
+export const searchDocuments = async (userId: string, query: string) => {
+  if (!query.trim()) return [];
+
+  return prisma.document.findMany({
+    where: {
+      userId,
+      isArchived: false,
+      OR: [
+        { title: { contains: query, mode: 'insensitive' } },
+        { content: { contains: query, mode: 'insensitive' } },
+      ],
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 20,
+    select: {
+      id: true,
+      title: true,
+      icon: true,
+      parentDocumentId: true,
+      updatedAt: true,
+    },
+  });
+};
+
 // Hàm đệ quy: archive toàn bộ cây con
 const archiveChildren = async (parentId: string): Promise<void> => {
   const children = await prisma.document.findMany({

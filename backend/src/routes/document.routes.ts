@@ -41,6 +41,7 @@ const router = Router();
  *       401:
  *         description: Chưa xác thực
  */
+router.get('/search', authMiddleware, documentController.searchDocuments);
 router.post('/', authMiddleware, documentController.createDocument);
 
 /**
@@ -152,6 +153,8 @@ router.patch('/:id', authMiddleware, documentController.updateDocument);
  *         description: Chưa xác thực
  */
 router.delete('/:id', authMiddleware, documentController.archiveDocument);
+router.patch('/:id/restore', authMiddleware, documentController.restoreDocument);
+router.delete('/:id/permanent', authMiddleware, documentController.deleteDocumentPermanently);
 
 /**
  * @swagger
