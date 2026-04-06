@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import * as documentController from '../controllers/document.controller';
+import * as tagController from '../controllers/tag.controller';
 
 const router = Router();
 
@@ -151,5 +152,69 @@ router.patch('/:id', authMiddleware, documentController.updateDocument);
  *         description: Chưa xác thực
  */
 router.delete('/:id', authMiddleware, documentController.archiveDocument);
+
+/**
+ * @swagger
+ * /documents/{id}/tags:
+ *   post:
+ *     summary: Gắn tag vào document
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [tagId]
+ *             properties:
+ *               tagId:
+ *                 type: string
+ *                 example: uuid-of-tag
+ *     responses:
+ *       200:
+ *         description: Gắn tag thành công, trả về document kèm tags
+ *       400:
+ *         description: Dữ liệu không hợp lệ hoặc tag đã được gắn
+ *       401:
+ *         description: Chưa xác thực
+ */
+router.post('/:id/tags', authMiddleware, tagController.attachTag);
+
+/**
+ * @swagger
+ * /documents/{id}/tags/{tagId}:
+ *   delete:
+ *     summary: Gỡ tag khỏi document
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: tagId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Gỡ tag thành công
+ *       404:
+ *         description: Không tìm thấy liên kết
+ *       401:
+ *         description: Chưa xác thực
+ */
+router.delete('/:id/tags/:tagId', authMiddleware, tagController.detachTag);
 
 export default router;
