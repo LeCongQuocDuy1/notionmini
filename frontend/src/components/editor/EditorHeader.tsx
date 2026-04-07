@@ -12,9 +12,10 @@ const EMOJI_LIST = [
 
 interface Props {
   document: DocumentDetail;
+  onUpdate: (updated: DocumentDetail) => void;
 }
 
-export default function EditorHeader({ document }: Props) {
+export default function EditorHeader({ document, onUpdate }: Props) {
   const { updateDocument } = useDocumentStore();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isHoveringHeader, setIsHoveringHeader] = useState(false);
@@ -22,6 +23,7 @@ export default function EditorHeader({ document }: Props) {
 
   const debouncedUpdateTitle = useDebounce((title: string) => {
     updateDocument(document.id, { title });
+    onUpdate({ ...document, title });
   }, 500);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,12 +32,14 @@ export default function EditorHeader({ document }: Props) {
 
   const handleEmojiSelect = (emoji: string) => {
     updateDocument(document.id, { icon: emoji });
+    onUpdate({ ...document, icon: emoji });
     setShowEmojiPicker(false);
   };
 
   const handleRemoveIcon = (e: React.MouseEvent) => {
     e.stopPropagation();
     updateDocument(document.id, { icon: null });
+    onUpdate({ ...document, icon: null });
   };
 
   // Cover image: chuyển file thành base64 (demo, thực tế nên upload lên server)
@@ -44,13 +48,16 @@ export default function EditorHeader({ document }: Props) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      updateDocument(document.id, { coverImage: reader.result as string });
+      const coverImage = reader.result as string;
+      updateDocument(document.id, { coverImage });
+      onUpdate({ ...document, coverImage });
     };
     reader.readAsDataURL(file);
   };
 
   const handleRemoveCover = () => {
     updateDocument(document.id, { coverImage: null });
+    onUpdate({ ...document, coverImage: null });
   };
 
   return (

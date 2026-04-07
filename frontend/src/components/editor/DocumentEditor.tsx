@@ -162,7 +162,7 @@ export default function DocumentEditor({ documentId }: Props) {
       </div>
 
       {/* Header (cover + icon + title) */}
-      <EditorHeader document={document} />
+      <EditorHeader document={document} onUpdate={setDocument} />
 
       {/* Tagging panel */}
       <TaggingPanel document={document} onUpdate={setDocument} />

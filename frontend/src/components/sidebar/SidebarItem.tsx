@@ -10,7 +10,7 @@ interface Props {
 
 export default function SidebarItem({ document, level }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { getChildren, createDocument, setActiveDocument, activeDocumentId } =
+  const { getChildren, createDocument, setActiveDocument, archiveDocument, activeDocumentId } =
     useDocumentStore();
 
   const children = getChildren(document.id);
@@ -77,8 +77,8 @@ export default function SidebarItem({ document, level }: Props) {
           </button>
           <button
             title="Xóa"
-            className="p-0.5 rounded hover:bg-neutral-600 transition-colors"
-            onClick={(e) => e.stopPropagation()} // Phase 7 sẽ xử lý
+            className="p-0.5 rounded hover:bg-red-500/80 text-red-400 transition-colors"
+            onClick={(e) => { e.stopPropagation(); archiveDocument(document.id); }}
           >
             <Trash2 size={13} />
           </button>
