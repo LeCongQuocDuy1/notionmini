@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -9,10 +9,14 @@ import {
   List, ListOrdered, AlignLeft, AlignCenter, AlignRight,
   Heading1, Heading2, Heading3, Code, Quote, Trash2
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useDocumentStore } from '../../stores/useDocumentStore';
 import { useDebounce } from '../../hooks/useDebounce';
 import EditorHeader from './EditorHeader';
 import TaggingPanel from './TaggingPanel';
+import SlashCommandMenu from './SlashCommandMenu';
+import Breadcrumbs from '../Breadcrumbs';
+import { EditorSkeleton } from '../SkeletonLoader';
 import type { DocumentDetail } from '../../types';
 import api from '../../lib/axios';
 
@@ -20,31 +24,43 @@ interface Props {
   documentId: string;
 }
 
+interface SlashMenuState {
+  query: string;
+  slashFrom: number;
+  position: { top: number; left: number };
+}
+
 export default function DocumentEditor({ documentId }: Props) {
   const { updateDocument, archiveDocument } = useDocumentStore();
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
+  const slashMenuRef = useRef(slashMenu);
+  useEffect(() => { slashMenuRef.current = slashMenu; }, [slashMenu]);
 
-  // Fetch full document detail (có content + tags)
   useEffect(() => {
     let cancelled = false;
-    setIsLoading(true);
     api.get<DocumentDetail>(`/documents/${documentId}`)
       .then(({ data }) => {
-        if (!cancelled) {
-          setDocument(data);
-          setIsLoading(false);
-        }
+        if (!cancelled) { setDocument(data); setIsLoading(false); }
       })
-      .catch(() => {
-        if (!cancelled) setIsLoading(false);
-      });
+      .catch(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
   }, [documentId]);
 
+  // Auto-update browser tab title
+  useEffect(() => {
+    if (document?.title) {
+      window.document.title = `${document.title} — Notion Mini`;
+    } else {
+      window.document.title = 'Notion Mini';
+    }
+    return () => { window.document.title = 'Notion Mini'; };
+  }, [document?.title]);
+
   const debouncedSave = useDebounce((content: string) => {
     updateDocument(documentId, { content });
-  }, 800);
+  }, 500);
 
   const editor = useEditor({
     extensions: [
@@ -58,7 +74,7 @@ export default function DocumentEditor({ documentId }: Props) {
     content: '',
     editorProps: {
       attributes: {
-        class: 'prose prose-invert prose-lg max-w-none outline-none min-h-[60vh] px-16 py-4 text-neutral-200 focus:outline-none',
+        class: 'prose prose-lg max-w-none outline-none min-h-[60vh] px-16 py-4 focus:outline-none',
       },
     },
     onUpdate: ({ editor }) => {
@@ -66,7 +82,42 @@ export default function DocumentEditor({ documentId }: Props) {
     },
   });
 
-  // Khi document load xong, set content vào editor
+  // Detect slash command via transaction events
+  useEffect(() => {
+    if (!editor) return;
+
+    const handleTransaction = () => {
+      const { state, view } = editor;
+      const { selection } = state;
+      const { $from } = selection;
+
+      // Get full text in current node up to cursor
+      const textBefore = $from.parent.textContent.slice(0, $from.parentOffset);
+      const slashIndex = textBefore.lastIndexOf('/');
+
+      if (slashIndex !== -1) {
+        const query = textBefore.slice(slashIndex + 1);
+        // Stop if query contains a space (user left the slash context)
+        if (!query.includes(' ') && !query.includes('\n')) {
+          const slashFrom = $from.start() + slashIndex;
+          // coordsAtPos returns viewport-relative coords
+          const coords = view.coordsAtPos(slashFrom + 1);
+          setSlashMenu({
+            query,
+            slashFrom,
+            position: { top: coords.bottom + 6, left: coords.left },
+          });
+          return;
+        }
+      }
+      setSlashMenu(null);
+    };
+
+    editor.on('transaction', handleTransaction);
+    return () => { editor.off('transaction', handleTransaction); };
+  }, [editor]);
+
+  // Set editor content on load
   useEffect(() => {
     if (editor && document?.content !== undefined) {
       const current = editor.getHTML();
@@ -77,26 +128,45 @@ export default function DocumentEditor({ documentId }: Props) {
     }
   }, [editor, document?.id, document?.content]);
 
+  // Esc blurs editor (only when slash menu is NOT open — menu handles its own Esc)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !slashMenuRef.current) {
+        editor?.commands.blur();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [editor]);
+
+  const handleArchive = async () => {
+    await archiveDocument(documentId);
+    toast.success('Đã chuyển vào thùng rác');
+  };
+
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-neutral-500 text-sm animate-pulse">Đang tải...</div>
+      <div className="flex-1 flex flex-col overflow-auto" style={{ background: 'var(--bg-app)' }}>
+        <EditorSkeleton />
       </div>
     );
   }
 
   if (!document) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-neutral-500 text-sm">Không tìm thấy trang.</div>
+      <div className="flex-1 flex items-center justify-center" style={{ background: 'var(--bg-app)' }}>
+        <div className="text-sm" style={{ color: 'var(--text-muted)' }}>Không tìm thấy trang.</div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto bg-[#191919]">
+    <div className="flex-1 flex flex-col overflow-auto" style={{ background: 'var(--bg-app)' }}>
       {/* Toolbar */}
-      <div className="sticky top-0 z-10 bg-[#191919] border-b border-neutral-800 px-16 py-1.5 flex items-center gap-0.5 flex-wrap">
+      <div
+        className="sticky top-0 z-10 px-16 py-1.5 flex items-center gap-0.5 flex-wrap border-b"
+        style={{ background: 'var(--bg-app)', borderColor: 'var(--border)' }}
+      >
         <ToolbarButton onClick={() => editor?.chain().focus().toggleBold().run()} active={editor?.isActive('bold')} title="Bold">
           <Bold size={14} />
         </ToolbarButton>
@@ -149,17 +219,15 @@ export default function DocumentEditor({ documentId }: Props) {
           <AlignRight size={14} />
         </ToolbarButton>
 
-        {/* Archive button */}
         <div className="ml-auto">
-          <ToolbarButton
-            onClick={() => archiveDocument(document.id)}
-            title="Chuyển vào thùng rác"
-            className="text-red-500 hover:bg-red-500/10"
-          >
+          <ToolbarButton onClick={handleArchive} title="Chuyển vào thùng rác" className="text-red-500 hover:bg-red-500/10">
             <Trash2 size={14} />
           </ToolbarButton>
         </div>
       </div>
+
+      {/* Breadcrumbs */}
+      <Breadcrumbs documentId={documentId} />
 
       {/* Header (cover + icon + title) */}
       <EditorHeader document={document} onUpdate={setDocument} />
@@ -169,12 +237,23 @@ export default function DocumentEditor({ documentId }: Props) {
 
       {/* Editor body */}
       <EditorContent editor={editor} className="flex-1" />
+
+      {/* Slash command menu — rendered as fixed overlay */}
+      {slashMenu && editor && (
+        <SlashCommandMenu
+          editor={editor}
+          query={slashMenu.query}
+          slashFrom={slashMenu.slashFrom}
+          position={slashMenu.position}
+          onClose={() => setSlashMenu(null)}
+        />
+      )}
     </div>
   );
 }
 
 function Divider() {
-  return <div className="w-px h-4 bg-neutral-700 mx-1" />;
+  return <div className="w-px h-4 mx-1" style={{ background: 'var(--border)' }} />;
 }
 
 function ToolbarButton({
@@ -190,11 +269,13 @@ function ToolbarButton({
     <button
       onClick={onClick}
       title={title}
-      className={`p-1.5 rounded transition-colors ${
-        active
-          ? 'bg-neutral-700 text-white'
-          : 'text-neutral-400 hover:bg-neutral-800 hover:text-white'
-      } ${className}`}
+      className={`p-1.5 rounded transition-colors ${className}`}
+      style={active
+        ? { background: 'var(--bg-active)', color: 'var(--text-primary)' }
+        : { color: 'var(--text-secondary)' }
+      }
+      onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
+      onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; } }}
     >
       {children}
     </button>

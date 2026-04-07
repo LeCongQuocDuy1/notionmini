@@ -1,16 +1,55 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-/* TipTap placeholder */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Theme CSS Variables ─────────────────────────────────────── */
+:root {
+  --bg-app:      #f7f7f5;
+  --bg-sidebar:  #f0f0ef;
+  --bg-surface:  #ffffff;
+  --bg-hover:    rgba(0, 0, 0, 0.05);
+  --bg-active:   rgba(0, 0, 0, 0.09);
+  --bg-input:    rgba(0, 0, 0, 0.04);
+  --border:      #e5e5e4;
+  --border-soft: #ededed;
+  --text-primary:   #191919;
+  --text-secondary: #787774;
+  --text-muted:     #acaba8;
+}
+
+:root.dark {
+  --bg-app:      #191919;
+  --bg-sidebar:  #111111;
+  --bg-surface:  #1f1f1f;
+  --bg-hover:    #2a2a2a;
+  --bg-active:   #373737;
+  --bg-input:    #2a2a2a;
+  --border:      #2f2f2f;
+  --border-soft: #262626;
+  --text-primary:   #ffffff;
+  --text-secondary: #9b9b9b;
+  --text-muted:     #555555;
+}
+
+/* ── TipTap ──────────────────────────────────────────────────── */
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: #525252;
+  color: var(--text-muted);
   pointer-events: none;
   height: 0;
 }
 
-/* TipTap prose overrides for dark theme */
 .tiptap {
-  caret-color: white;
+  caret-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+/* prose text override so light/dark both work */
+.prose :where(p, li, blockquote, h1, h2, h3, h4, h5, h6) {
+  color: var(--text-primary);
+}
+.prose :where(code) {
+  color: var(--text-primary);
 }

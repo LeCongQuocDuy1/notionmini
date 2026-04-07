@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { toast } from 'sonner';
 import type { Document, DocumentDetail } from '../types';
 import api from '../lib/axios';
 
@@ -15,7 +16,6 @@ interface DocumentState {
   deleteDocumentPermanently: (id: string) => Promise<void>;
   setActiveDocument: (id: string | null) => void;
 
-  // Lấy document con trực tiếp của một node (dùng trong Recursive Sidebar)
   getChildren: (parentId: string | null) => Document[];
 }
 
@@ -31,6 +31,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       set({ documents: data, isLoading: false });
     } catch {
       set({ isLoading: false });
+      toast.error('Không thể tải danh sách trang');
     }
   },
 
@@ -43,30 +44,45 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   updateDocument: async (id, data) => {
-    await api.patch(`/documents/${id}`, data);
-    set((state) => ({
-      documents: state.documents.map((doc) =>
-        doc.id === id ? { ...doc, ...data } : doc
-      ),
-    }));
+    try {
+      await api.patch(`/documents/${id}`, data);
+      set((state) => ({
+        documents: state.documents.map((doc) =>
+          doc.id === id ? { ...doc, ...data } : doc
+        ),
+      }));
+    } catch {
+      toast.error('Không thể lưu thay đổi');
+    }
   },
 
   archiveDocument: async (id) => {
-    await api.delete(`/documents/${id}`);
-    set((state) => ({
-      documents: state.documents.filter((doc) => doc.id !== id),
-      activeDocumentId: state.activeDocumentId === id ? null : state.activeDocumentId,
-    }));
+    try {
+      await api.delete(`/documents/${id}`);
+      set((state) => ({
+        documents: state.documents.filter((doc) => doc.id !== id),
+        activeDocumentId: state.activeDocumentId === id ? null : state.activeDocumentId,
+      }));
+    } catch {
+      toast.error('Không thể xóa trang');
+    }
   },
 
   restoreDocument: async (id) => {
-    await api.patch(`/documents/${id}/restore`);
-    // Sau khi restore, fetch lại để cập nhật sidebar
-    await get().fetchDocuments();
+    try {
+      await api.patch(`/documents/${id}/restore`);
+      await get().fetchDocuments();
+    } catch {
+      toast.error('Không thể khôi phục trang');
+    }
   },
 
   deleteDocumentPermanently: async (id) => {
-    await api.delete(`/documents/${id}/permanent`);
+    try {
+      await api.delete(`/documents/${id}/permanent`);
+    } catch {
+      toast.error('Không thể xóa vĩnh viễn');
+    }
   },
 
   setActiveDocument: (id) => set({ activeDocumentId: id }),

@@ -89,6 +89,38 @@ notionmini/
 - **Trash Management:** Xem và khôi phục document trong thùng rác.
 - **Global Search (Cmd+K):** Tìm kiếm nhanh toàn bộ document.
 
+### ✅ Giai đoạn 9: UX Polish & Signature Features - HOÀN THÀNH
+
+#### UX & Feedback
+- **Toast Notifications (sonner):** Thông báo khi tạo trang, xóa, khôi phục, lỗi API.
+  - `frontend/src/stores/useDocumentStore.ts` — toast.error() trên mọi action thất bại.
+  - `frontend/src/components/sidebar/Sidebar.tsx` — toast.success() khi tạo trang root.
+  - `frontend/src/components/sidebar/SidebarItem.tsx` — toast.success() khi tạo trang con, xóa.
+  - `frontend/src/components/TrashModal.tsx` — toast.success() khi restore/xóa vĩnh viễn.
+  - `frontend/src/components/editor/DocumentEditor.tsx` — toast.success() khi archive.
+- **Skeleton Loaders:** `frontend/src/components/SkeletonLoader.tsx`
+  - `SidebarSkeleton` — 4 dòng animated thay thế text "Đang tải..." ở sidebar.
+  - `EditorSkeleton` — Cover + title + lines animated thay thế spinner ở editor.
+- **Hover & Active States:** Sidebar items cải thiện: active có `shadow-sm`, hover dùng `bg-neutral-800/70`, logout chuyển `hover:text-red-400`.
+
+#### Gia vị tinh tế
+- **Auto document.title:** Editor cập nhật `window.document.title` thành `"Tên trang — Notion Mini"` khi mở trang, reset khi unmount.
+- **Esc đóng Modal:** `TrashModal` có Esc handler (SearchModal đã có sẵn).
+- **Favicon & Title:** `public/favicon.svg` — icon Notion-style. `index.html` title đổi thành `"Notion Mini"`.
+
+#### Tính năng đặc trưng (Signature)
+- **Breadcrumbs:** `frontend/src/components/Breadcrumbs.tsx` — hiển thị chuỗi `Parent > Child` phía trên editor. Ẩn nếu trang là root. Node cha có thể click để navigate.
+- **Slash Commands:** `frontend/src/components/editor/SlashCommandMenu.tsx` — menu nổi xuất hiện khi gõ `/`. Hỗ trợ 10 block types (Văn bản, H1-H4, Bullet/Ordered list, Trích dẫn, Code block, Đường phân cách). Điều hướng bằng ↑↓, chọn bằng Enter, đóng bằng Esc. Tích hợp vào `DocumentEditor` qua `editor.on('transaction')` để detect pattern `/query` real-time.
+- **Theme Toggle (Dark/Light):**
+  - `frontend/src/stores/useThemeStore.ts` — Zustand + persist, toggle class `dark` trên `<html>`.
+  - `frontend/src/index.css` — `@custom-variant dark` cho Tailwind v4.
+  - Nút Sun/Moon góc trên phải editor trong `DashboardPage`.
+
+#### Hiệu suất
+- **Debounce 500ms:** Giảm từ 800ms xuống 500ms trong `DocumentEditor`.
+- **Xóa console.log:** Không còn console.log nào trong codebase.
+- **Lỗi ESLint:** Fix `setIsLoading` synchronous-in-effect bằng cách khởi tạo `useState(true)` thay vì gọi trong effect body.
+
 ## 4. Quy tắc Code
 
 ### Backend (`backend/`)
