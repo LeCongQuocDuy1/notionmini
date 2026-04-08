@@ -79,7 +79,7 @@ export default function Sidebar() {
   };
 
   const handleCreateRoot = async () => {
-    const newDoc = await createDocument.mutateAsync();
+    const newDoc = await createDocument.mutateAsync(undefined);
     setActiveDocument(newDoc.id);
     toast.success('Đã tạo trang mới');
   };

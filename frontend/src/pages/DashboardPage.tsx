@@ -26,7 +26,7 @@ export default function DashboardPage() {
   }, [isDark]);
 
   const handleCreateFirst = async () => {
-    const doc = await createDocument.mutateAsync();
+    const doc = await createDocument.mutateAsync(undefined);
     setActiveDocument(doc.id);
     toast.success('Đã tạo trang mới');
   };

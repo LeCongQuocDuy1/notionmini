@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { ImageIcon, Smile, X } from 'lucide-react';
 import { useUpdateDocument } from '../../hooks/useDocuments';
 import { useDebounce } from '../../hooks/useDebounce';

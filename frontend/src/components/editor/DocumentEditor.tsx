@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
@@ -190,7 +190,6 @@ export default function DocumentEditor({ documentId }: Props) {
     const pos = view.posAtDOM(blockHandle.node, 0);
     if (pos === undefined) return;
     const resolvedPos = editor.state.doc.resolve(pos);
-    const node = resolvedPos.node(resolvedPos.depth);
     editor
       .chain()
       .focus()
@@ -282,74 +281,7 @@ export default function DocumentEditor({ documentId }: Props) {
         )}
 
         {/* Bubble menu — appears on text selection */}
-        {editor && (
-          <BubbleMenu
-            editor={editor}
-            tippyOptions={{ duration: 150, placement: 'top' }}
-            className="flex items-center gap-0.5 rounded-lg border shadow-xl px-1.5 py-1"
-            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
-          >
-            <BubbleBtn
-              onClick={() => editor.chain().focus().toggleBold().run()}
-              active={editor.isActive('bold')}
-              title="Bold (⌘B)"
-            >
-              <Bold size={13} />
-            </BubbleBtn>
-            <BubbleBtn
-              onClick={() => editor.chain().focus().toggleItalic().run()}
-              active={editor.isActive('italic')}
-              title="Italic (⌘I)"
-            >
-              <Italic size={13} />
-            </BubbleBtn>
-            <BubbleBtn
-              onClick={() => editor.chain().focus().toggleUnderline().run()}
-              active={editor.isActive('underline')}
-              title="Underline (⌘U)"
-            >
-              <UnderlineIcon size={13} />
-            </BubbleBtn>
-            <BubbleBtn
-              onClick={() => editor.chain().focus().toggleStrike().run()}
-              active={editor.isActive('strike')}
-              title="Strikethrough"
-            >
-              <Strikethrough size={13} />
-            </BubbleBtn>
-            <BubbleBtn
-              onClick={() => editor.chain().focus().toggleCode().run()}
-              active={editor.isActive('code')}
-              title="Inline code"
-            >
-              <Code size={13} />
-            </BubbleBtn>
-
-            <div className="w-px h-4 mx-0.5" style={{ background: 'var(--border)' }} />
-
-            <BubbleBtn
-              onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-              active={editor.isActive('heading', { level: 1 })}
-              title="H1"
-            >
-              <Heading1 size={13} />
-            </BubbleBtn>
-            <BubbleBtn
-              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-              active={editor.isActive('heading', { level: 2 })}
-              title="H2"
-            >
-              <Heading2 size={13} />
-            </BubbleBtn>
-            <BubbleBtn
-              onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-              active={editor.isActive('heading', { level: 3 })}
-              title="H3"
-            >
-              <Heading3 size={13} />
-            </BubbleBtn>
-          </BubbleMenu>
-        )}
+        {editor && <InlineBubbleMenu editor={editor} />}
 
         <EditorContent editor={editor} className="flex-1" />
       </div>
@@ -385,6 +317,44 @@ export default function DocumentEditor({ documentId }: Props) {
           onCancel={() => setShowArchiveConfirm(false)}
         />
       )}
+    </div>
+  );
+}
+
+// ── Custom Bubble Menu (no @tiptap/react BubbleMenu in v3) ──────
+function InlineBubbleMenu({ editor }: { editor: Editor }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    const update = () => {
+      const { from, to } = editor.state.selection;
+      if (from === to) { setPos(null); return; }
+      const start = editor.view.coordsAtPos(from);
+      const end = editor.view.coordsAtPos(to);
+      const midLeft = (start.left + end.left) / 2;
+      setPos({ top: start.top - 44, left: midLeft });
+    };
+    editor.on('selectionUpdate', update);
+    editor.on('blur', () => setPos(null));
+    return () => { editor.off('selectionUpdate', update); editor.off('blur', () => setPos(null)); };
+  }, [editor]);
+
+  if (!pos) return null;
+
+  return (
+    <div
+      className="fixed z-50 flex items-center gap-0.5 rounded-lg border shadow-xl px-1.5 py-1"
+      style={{ top: pos.top, left: pos.left, transform: 'translateX(-50%)', background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+    >
+      <BubbleBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold"><Bold size={13} /></BubbleBtn>
+      <BubbleBtn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic"><Italic size={13} /></BubbleBtn>
+      <BubbleBtn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline"><UnderlineIcon size={13} /></BubbleBtn>
+      <BubbleBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strike"><Strikethrough size={13} /></BubbleBtn>
+      <BubbleBtn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="Code"><Code size={13} /></BubbleBtn>
+      <div className="w-px h-4 mx-0.5" style={{ background: 'var(--border)' }} />
+      <BubbleBtn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="H1"><Heading1 size={13} /></BubbleBtn>
+      <BubbleBtn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="H2"><Heading2 size={13} /></BubbleBtn>
+      <BubbleBtn onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="H3"><Heading3 size={13} /></BubbleBtn>
     </div>
   );
 }

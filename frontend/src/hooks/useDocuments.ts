@@ -44,7 +44,7 @@ export function useDocument(id: string) {
 export function useCreateDocument() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (parentDocumentId?: string) => {
+    mutationFn: async (parentDocumentId: string | undefined) => {
       const { data } = await api.post<Document>('/documents', {
         parentDocumentId: parentDocumentId ?? null,
       });
