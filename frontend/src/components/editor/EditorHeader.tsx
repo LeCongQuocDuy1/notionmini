@@ -70,7 +70,7 @@ export default function EditorHeader({ document, documentId }: Props) {
       >
         {/* Cover */}
         {coverValue ? (
-          <div className="relative w-full h-56 group">
+          <div className="relative w-full h-72 group">
             {isCssBackground(coverValue) ? (
               <div className="w-full h-full" style={{ background: coverValue }} />
             ) : (

@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Settings, Trash, LogOut, Search } from 'lucide-react';
+import { Settings, Trash, LogOut, Search, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  DndContext, closestCenter, PointerSensor,
-  useSensor, useSensors, type DragEndEvent,
+  DndContext, DragOverlay, PointerSensor,
+  useSensor, useSensors, type DragEndEvent, type DragStartEvent,
+  pointerWithin,
 } from '@dnd-kit/core';
-import {
-  SortableContext, verticalListSortingStrategy, arrayMove,
-} from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useDocumentStore } from '../../stores/useDocumentStore';
-import { useDocuments, useCreateDocument } from '../../hooks/useDocuments';
+import { useDocuments, useCreateDocument, useMoveDocument } from '../../hooks/useDocuments';
 import SidebarItem from './SidebarItem';
 import TrashModal from '../TrashModal';
 import SearchModal from '../SearchModal';
@@ -18,39 +17,53 @@ import SettingsModal from '../SettingsModal';
 import { SidebarSkeleton } from '../SkeletonLoader';
 import type { Document } from '../../types';
 
+// Helper: is candidateId a descendant of ancestorId?
+function isDescendantOf(docs: Document[], ancestorId: string, candidateId: string): boolean {
+  const children = docs.filter((d) => d.parentDocumentId === ancestorId);
+  for (const child of children) {
+    if (child.id === candidateId) return true;
+    if (isDescendantOf(docs, child.id, candidateId)) return true;
+  }
+  return false;
+}
+
+// Root drop zone — the empty area below all items
+function RootDropZone({ active }: { active: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id: '__root__', disabled: !active });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`h-10 rounded-md mx-1 mt-1 transition-colors border-2 border-dashed ${
+        active
+          ? isOver
+            ? 'border-blue-400 bg-blue-400/10'
+            : 'border-(--border) opacity-60'
+          : 'border-transparent'
+      }`}
+    >
+      {active && (
+        <p className="text-xs text-center pt-2" style={{ color: 'var(--text-muted)' }}>
+          Thả vào đây để chuyển lên root
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function Sidebar() {
   const { user, logout } = useAuthStore();
   const { setActiveDocument } = useDocumentStore();
   const { data: documents = [], isLoading } = useDocuments();
   const createDocument = useCreateDocument();
+  const moveDocument = useMoveDocument();
 
   const [showTrash, setShowTrash] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
-  // Local ordered IDs for drag & drop (client-side only)
-  const [orderedIds, setOrderedIds] = useState<string[]>([]);
-
-  const rootDocuments = documents.filter((doc) => doc.parentDocumentId === null);
-
-  // Sync orderedIds when documents change (new or deleted)
-  useEffect(() => {
-    const currentIds = rootDocuments.map((d) => d.id);
-    setOrderedIds((prev) => {
-      const prevSet = new Set(prev);
-      const currentSet = new Set(currentIds);
-      // Keep existing order for docs still present, append new ones
-      const kept = prev.filter((id) => currentSet.has(id));
-      const added = currentIds.filter((id) => !prevSet.has(id));
-      return [...kept, ...added];
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documents.length]);
-
-  // Sorted root documents according to local order
-  const sortedRoots = orderedIds
-    .map((id) => rootDocuments.find((d) => d.id === id))
-    .filter(Boolean) as Document[];
+  const rootDocuments = documents.filter((doc) => doc.parentDocumentId === null && !doc.isArchived);
+  const activeDragDoc = activeDragId ? documents.find((d) => d.id === activeDragId) : null;
 
   // Cmd+K / Ctrl+K shortcut
   useEffect(() => {
@@ -64,19 +77,59 @@ export default function Sidebar() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // Listen for "move-to-root" custom event dispatched by SidebarItem
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const docId = (e as CustomEvent<string>).detail;
+      moveDocument.mutate({ id: docId, parentDocumentId: null });
+      toast.success('Đã chuyển lên root');
+    };
+    window.addEventListener('move-to-root', handler);
+    return () => window.removeEventListener('move-to-root', handler);
+  }, [moveDocument]);
+
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: { distance: 6 },
   }));
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setOrderedIds((ids) => {
-      const oldIndex = ids.indexOf(active.id as string);
-      const newIndex = ids.indexOf(over.id as string);
-      return arrayMove(ids, oldIndex, newIndex);
-    });
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string);
   };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const draggedId = active.id as string;
+    const overId = over.id as string;
+
+    if (overId === '__root__') {
+      // Move to root
+      const doc = documents.find((d) => d.id === draggedId);
+      if (doc && doc.parentDocumentId !== null) {
+        moveDocument.mutate({ id: draggedId, parentDocumentId: null });
+        toast.success('Đã chuyển lên root');
+      }
+      return;
+    }
+
+    if (overId === draggedId) return;
+
+    // Prevent dropping into own descendant
+    if (isDescendantOf(documents, draggedId, overId)) {
+      toast.error('Không thể di chuyển vào trang con của nó');
+      return;
+    }
+
+    const draggedDoc = documents.find((d) => d.id === draggedId);
+    if (draggedDoc?.parentDocumentId === overId) return; // already a child
+
+    moveDocument.mutate({ id: draggedId, parentDocumentId: overId });
+    toast.success('Đã di chuyển trang');
+  };
+
+  const handleDragCancel = () => setActiveDragId(null);
 
   const handleCreateRoot = async () => {
     const newDoc = await createDocument.mutateAsync(undefined);
@@ -105,10 +158,10 @@ export default function Sidebar() {
         {/* Search button */}
         <button
           onClick={() => setShowSearch(true)}
-          className="flex items-center gap-2 mx-2 mt-2 px-2 py-1.5 rounded-md text-sm transition-colors"
-          style={btnBase}
+          className="sidebar-item flex items-center gap-2 mx-2 mt-2 px-2 py-1.5 rounded-md text-sm"
           onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+          style={btnBase}
         >
           <Search size={14} />
           <span className="flex-1 text-left">Tìm kiếm</span>
@@ -119,7 +172,7 @@ export default function Sidebar() {
         <div className="flex-1 overflow-y-auto py-2 px-1 mt-1">
           {isLoading ? (
             <SidebarSkeleton />
-          ) : sortedRoots.length === 0 ? (
+          ) : rootDocuments.length === 0 && !activeDragId ? (
             <div className="px-3 py-4 text-center">
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Chưa có trang nào</p>
               <button
@@ -131,12 +184,37 @@ export default function Sidebar() {
               </button>
             </div>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
-                {sortedRoots.map((doc) => (
-                  <SidebarItem key={doc.id} document={doc} level={0} />
-                ))}
-              </SortableContext>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={pointerWithin}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
+            >
+              {rootDocuments.map((doc) => (
+                <SidebarItem key={doc.id} document={doc} level={0} activeDragId={activeDragId} />
+              ))}
+
+              {/* Drop zone to move back to root */}
+              <RootDropZone active={activeDragId !== null} />
+
+              {/* Drag ghost overlay */}
+              <DragOverlay dropAnimation={null}>
+                {activeDragDoc && (
+                  <div
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm shadow-xl border"
+                    style={{
+                      background: 'var(--bg-surface)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)',
+                      maxWidth: '220px',
+                    }}
+                  >
+                    <span className="shrink-0">{activeDragDoc.icon ?? <FileText size={14} />}</span>
+                    <span className="truncate">{activeDragDoc.title || 'Untitled'}</span>
+                  </div>
+                )}
+              </DragOverlay>
             </DndContext>
           )}
         </div>

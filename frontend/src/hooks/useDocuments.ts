@@ -145,6 +145,30 @@ export function useRestoreDocument() {
   });
 }
 
+export function useMoveDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, parentDocumentId }: { id: string; parentDocumentId: string | null }) => {
+      await api.patch(`/documents/${id}`, { parentDocumentId });
+    },
+    onMutate: async ({ id, parentDocumentId }) => {
+      await queryClient.cancelQueries({ queryKey: DOCUMENTS_KEY });
+      const prev = queryClient.getQueryData<Document[]>(DOCUMENTS_KEY);
+      queryClient.setQueryData<Document[]>(DOCUMENTS_KEY, (old) =>
+        old?.map((doc) => (doc.id === id ? { ...doc, parentDocumentId } : doc)) ?? []
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(DOCUMENTS_KEY, context.prev);
+      toast.error('Không thể di chuyển trang');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY });
+    },
+  });
+}
+
 export function useDeletePermanently() {
   const queryClient = useQueryClient();
   return useMutation({

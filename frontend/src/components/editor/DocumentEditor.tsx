@@ -36,11 +36,6 @@ interface SlashMenuState {
   position: { top: number; left: number };
 }
 
-interface BlockHandle {
-  top: number;
-  height: number;
-  node: Element | null;
-}
 
 export default function DocumentEditor({ documentId }: Props) {
   const { setActiveDocument } = useDocumentStore();
@@ -52,10 +47,127 @@ export default function DocumentEditor({ documentId }: Props) {
   const slashMenuRef = useRef(slashMenu);
   useEffect(() => { slashMenuRef.current = slashMenu; }, [slashMenu]);
 
-  const [blockHandle, setBlockHandle] = useState<BlockHandle | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Block handle — use refs to avoid re-renders on every mousemove
+  const blockHandleElRef = useRef<HTMLDivElement>(null);
+  const currentBlockNodeRef = useRef<Element | null>(null);
+  const hideHandleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Block drag-to-reorder
+  const draggedBlockRef = useRef<Element | null>(null);
+  const dropIndicatorRef = useRef<HTMLDivElement>(null);
+  const dropTargetRef = useRef<{ block: Element; insertAfter: boolean } | null>(null);
+  const editorRef = useRef<Editor | null>(null);
+
+  const cancelHideHandle = useCallback(() => {
+    if (hideHandleTimerRef.current) clearTimeout(hideHandleTimerRef.current);
+  }, []);
+
+  const scheduleHideHandle = useCallback(() => {
+    cancelHideHandle();
+    hideHandleTimerRef.current = setTimeout(() => {
+      if (blockHandleElRef.current) blockHandleElRef.current.style.display = 'none';
+      currentBlockNodeRef.current = null;
+    }, 300);
+  }, [cancelHideHandle]);
+
+  // ── Block drag handlers ────────────────────────────────────────
+  const handleGripDragStart = useCallback((e: React.DragEvent<HTMLButtonElement>) => {
+    const node = currentBlockNodeRef.current;
+    if (!node) { e.preventDefault(); return; }
+    draggedBlockRef.current = node;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', ''); // required for Firefox
+    cancelHideHandle();
+  }, [cancelHideHandle]);
+
+  const BLOCK_SELECTOR = 'p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre, table, hr';
+
+  const handleEditorDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const indicator = dropIndicatorRef.current;
+    const container = editorContainerRef.current;
+    if (!indicator || !container) return;
+
+    const target = window.document.elementFromPoint(e.clientX, e.clientY);
+    if (!target) { indicator.style.display = 'none'; return; }
+
+    const block = target.closest(BLOCK_SELECTOR);
+    if (!block || !container.contains(block) || block === draggedBlockRef.current) {
+      indicator.style.display = 'none';
+      dropTargetRef.current = null;
+      return;
+    }
+
+    const rect = block.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const insertAfter = e.clientY > rect.top + rect.height / 2;
+    const indicatorY = insertAfter
+      ? rect.bottom - containerRect.top + container.scrollTop
+      : rect.top - containerRect.top + container.scrollTop;
+
+    indicator.style.top = `${indicatorY - 1}px`;
+    indicator.style.display = 'block';
+    dropTargetRef.current = { block, insertAfter };
+  }, []);
+
+  const handleEditorDragEnd = useCallback(() => {
+    if (dropIndicatorRef.current) dropIndicatorRef.current.style.display = 'none';
+    draggedBlockRef.current = null;
+    dropTargetRef.current = null;
+  }, []);
+
+  const handleEditorDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (dropIndicatorRef.current) dropIndicatorRef.current.style.display = 'none';
+
+    const draggedBlock = draggedBlockRef.current;
+    const dropTarget = dropTargetRef.current;
+    draggedBlockRef.current = null;
+    dropTargetRef.current = null;
+    const ed = editorRef.current;
+    if (!ed || !draggedBlock || !dropTarget) return;
+
+    const view = ed.view;
+    const { state } = ed;
+
+    const dragPos = view.posAtDOM(draggedBlock, 0);
+    const $drag = state.doc.resolve(dragPos);
+    const dragFrom = $drag.before($drag.depth);
+    const dragTo = $drag.after($drag.depth);
+    const dragNode = state.doc.nodeAt(dragFrom);
+    if (!dragNode) return;
+
+    const targetPos = view.posAtDOM(dropTarget.block, 0);
+    const $target = state.doc.resolve(targetPos);
+    const targetFrom = $target.before($target.depth);
+    const targetTo = $target.after($target.depth);
+
+    if (dragFrom === targetFrom) return;
+
+    const tr = state.tr;
+    const nodeSize = dragNode.nodeSize;
+
+    if (dragFrom < targetFrom) {
+      // Dragged block is BEFORE target → delete first, then insert
+      tr.delete(dragFrom, dragTo);
+      const shift = dragTo - dragFrom; // = nodeSize
+      const insertAt = dropTarget.insertAfter ? targetTo - shift : targetFrom - shift;
+      tr.insert(insertAt, dragNode);
+    } else {
+      // Dragged block is AFTER target → insert first, then delete
+      const insertAt = dropTarget.insertAfter ? targetTo : targetFrom;
+      tr.insert(insertAt, dragNode);
+      tr.delete(dragFrom + nodeSize, dragTo + nodeSize);
+    }
+
+    view.dispatch(tr);
+    ed.commands.focus();
+  }, []);
 
   // Auto-update browser tab title
   useEffect(() => {
@@ -102,31 +214,37 @@ export default function DocumentEditor({ documentId }: Props) {
     },
   });
 
-  // ── Block handle on mousemove ──────────────────────────────────
+  // Keep editorRef in sync
+  useEffect(() => { editorRef.current = editor; }, [editor]);
+
+  // ── Block handle on mousemove — direct DOM update, no re-render ──
   const handleEditorMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!editorContainerRef.current) return;
+    const handle = blockHandleElRef.current;
     const container = editorContainerRef.current;
-    const containerRect = container.getBoundingClientRect();
+    if (!handle || !container) return;
 
-    // Find the block element under the cursor
     const target = window.document.elementFromPoint(e.clientX, e.clientY);
-    if (!target) return;
+    if (!target) { scheduleHideHandle(); return; }
 
-    const blockSelector = 'p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre, table, .task-list-item, hr';
+    // Chuột đang trên handle → cancel hide, giữ nguyên
+    if (handle.contains(target as Node)) { cancelHideHandle(); return; }
+
+    const blockSelector = 'p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre, table, hr';
     const block = target.closest(blockSelector);
 
     if (!block || !container.contains(block)) {
-      setBlockHandle(null);
+      scheduleHideHandle();
       return;
     }
 
+    cancelHideHandle();
+    const containerRect = container.getBoundingClientRect();
     const rect = block.getBoundingClientRect();
-    setBlockHandle({
-      top: rect.top - containerRect.top + container.scrollTop,
-      height: rect.height,
-      node: block,
-    });
-  }, []);
+    const top = rect.top - containerRect.top + container.scrollTop + rect.height / 2 - 14;
+    handle.style.top = `${top}px`;
+    handle.style.display = 'flex';
+    currentBlockNodeRef.current = block;
+  }, [scheduleHideHandle, cancelHideHandle]);
 
   // ── Detect slash command ───────────────────────────────────────
   useEffect(() => {
@@ -185,9 +303,10 @@ export default function DocumentEditor({ documentId }: Props) {
 
   // ── Delete block ───────────────────────────────────────────────
   const handleDeleteBlock = () => {
-    if (!editor || !blockHandle?.node) return;
+    const node = currentBlockNodeRef.current;
+    if (!editor || !node) return;
     const view = editor.view;
-    const pos = view.posAtDOM(blockHandle.node, 0);
+    const pos = view.posAtDOM(node, 0);
     if (pos === undefined) return;
     const resolvedPos = editor.state.doc.resolve(pos);
     editor
@@ -196,7 +315,8 @@ export default function DocumentEditor({ documentId }: Props) {
       .setNodeSelection(resolvedPos.before(resolvedPos.depth))
       .deleteSelection()
       .run();
-    setBlockHandle(null);
+    if (blockHandleElRef.current) blockHandleElRef.current.style.display = 'none';
+    currentBlockNodeRef.current = null;
   };
 
   const handleArchiveConfirm = async () => {
@@ -252,33 +372,43 @@ export default function DocumentEditor({ documentId }: Props) {
         ref={editorContainerRef}
         className="flex-1 relative"
         onMouseMove={handleEditorMouseMove}
-        onMouseLeave={() => setBlockHandle(null)}
+        onMouseLeave={scheduleHideHandle}
+        onDragOver={handleEditorDragOver}
+        onDragEnd={handleEditorDragEnd}
+        onDrop={handleEditorDrop}
       >
-        {/* Floating block action bar */}
-        {blockHandle && (
-          <div
-            className="absolute flex items-center gap-0.5 z-10 select-none"
-            style={{
-              top: blockHandle.top + blockHandle.height / 2 - 14,
-              left: '20px',
-            }}
+        {/* Drop indicator line */}
+        <div
+          ref={dropIndicatorRef}
+          className="absolute left-16 right-4 h-0.5 bg-blue-400 rounded-full z-20 pointer-events-none"
+          style={{ display: 'none' }}
+        />
+
+        {/* Floating block action bar — always in DOM, shown/hidden via style */}
+        <div
+          ref={blockHandleElRef}
+          className="absolute items-center gap-0.5 z-10 select-none"
+          style={{ display: 'none', left: '8px' }}
+          onMouseEnter={cancelHideHandle}
+          onMouseLeave={scheduleHideHandle}
+        >
+          <button
+            draggable
+            onDragStart={handleGripDragStart}
+            className="w-7 h-7 flex items-center justify-center rounded opacity-0 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing hover:bg-black/10 dark:hover:bg-white/10"
+            style={{ color: 'var(--text-muted)' }}
+            title="Kéo để di chuyển dòng"
           >
-            <button
-              className="w-6 h-6 flex items-center justify-center rounded opacity-40 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
-              style={{ color: 'var(--text-muted)' }}
-              title="Kéo để di chuyển"
-            >
-              <GripVertical size={14} />
-            </button>
-            <button
-              onClick={handleDeleteBlock}
-              className="w-6 h-6 flex items-center justify-center rounded opacity-40 hover:opacity-100 transition-opacity text-red-400"
-              title="Xóa khối này"
-            >
-              <Trash2 size={13} />
-            </button>
-          </div>
-        )}
+            <GripVertical size={15} />
+          </button>
+          <button
+            onClick={handleDeleteBlock}
+            className="w-7 h-7 flex items-center justify-center rounded opacity-0 hover:opacity-100 transition-opacity text-red-400 hover:bg-red-500/15"
+            title="Xóa khối này"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
 
         {/* Bubble menu — appears on text selection */}
         {editor && <InlineBubbleMenu editor={editor} />}

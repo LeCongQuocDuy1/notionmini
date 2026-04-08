@@ -10,9 +10,10 @@ export const createDocumentSchema = z.object({
 export const updateDocumentSchema = z.object({
   title: z.string().optional(),
   content: z.string().optional(),
-  icon: z.string().optional(),
-  coverImage: z.string().optional(),
+  icon: z.string().nullable().optional(),
+  coverImage: z.string().nullable().optional(),
   isPublished: z.boolean().optional(),
+  parentDocumentId: z.string().uuid().nullable().optional(),
 });
 
 export type CreateDocumentInput = z.infer<typeof createDocumentSchema>;
@@ -93,6 +94,17 @@ export const updateDocument = async (
   });
   if (!doc) throw new Error('Document không tồn tại hoặc đã bị xóa');
 
+  // Prevent moving document into itself or its own descendants
+  if (input.parentDocumentId) {
+    if (input.parentDocumentId === documentId) {
+      throw new Error('Không thể di chuyển trang vào chính nó');
+    }
+    const isDescendant = await checkIsDescendant(documentId, input.parentDocumentId);
+    if (isDescendant) {
+      throw new Error('Không thể di chuyển trang vào trang con của nó');
+    }
+  }
+
   return prisma.document.update({
     where: { id: documentId },
     data: input,
@@ -171,6 +183,19 @@ export const searchDocuments = async (userId: string, query: string) => {
       updatedAt: true,
     },
   });
+};
+
+// Kiểm tra xem targetId có phải là descendant của ancestorId không
+const checkIsDescendant = async (ancestorId: string, targetId: string): Promise<boolean> => {
+  const children = await prisma.document.findMany({
+    where: { parentDocumentId: ancestorId },
+    select: { id: true },
+  });
+  for (const child of children) {
+    if (child.id === targetId) return true;
+    if (await checkIsDescendant(child.id, targetId)) return true;
+  }
+  return false;
 };
 
 // Hàm đệ quy: archive toàn bộ cây con

@@ -41,6 +41,46 @@ const router = Router();
  *       401:
  *         description: Chưa xác thực
  */
+/**
+ * @swagger
+ * /documents/search:
+ *   get:
+ *     summary: Tìm kiếm document theo keyword
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Từ khóa tìm kiếm trong title hoặc content
+ *         example: meeting notes
+ *     responses:
+ *       200:
+ *         description: Danh sách documents khớp (tối đa 20)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   title:
+ *                     type: string
+ *                   icon:
+ *                     type: string
+ *                   parentDocumentId:
+ *                     type: string
+ *                   updatedAt:
+ *                     type: string
+ *                     format: date-time
+ *       401:
+ *         description: Chưa xác thực
+ */
 router.get('/search', authMiddleware, documentController.searchDocuments);
 router.post('/', authMiddleware, documentController.createDocument);
 
@@ -153,7 +193,66 @@ router.patch('/:id', authMiddleware, documentController.updateDocument);
  *         description: Chưa xác thực
  */
 router.delete('/:id', authMiddleware, documentController.archiveDocument);
+/**
+ * @swagger
+ * /documents/{id}/restore:
+ *   patch:
+ *     summary: Khôi phục document từ thùng rác
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của document cần khôi phục
+ *     responses:
+ *       200:
+ *         description: Khôi phục thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 title:
+ *                   type: string
+ *                 isArchived:
+ *                   type: boolean
+ *                   example: false
+ *       404:
+ *         description: Không tìm thấy hoặc document chưa bị xóa
+ *       401:
+ *         description: Chưa xác thực
+ */
 router.patch('/:id/restore', authMiddleware, documentController.restoreDocument);
+
+/**
+ * @swagger
+ * /documents/{id}/permanent:
+ *   delete:
+ *     summary: Xóa vĩnh viễn document
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của document cần xóa vĩnh viễn
+ *     responses:
+ *       204:
+ *         description: Xóa thành công (no content)
+ *       404:
+ *         description: Không tìm thấy document
+ *       401:
+ *         description: Chưa xác thực
+ */
 router.delete('/:id/permanent', authMiddleware, documentController.deleteDocumentPermanently);
 
 /**

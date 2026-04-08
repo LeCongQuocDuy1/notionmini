@@ -1,8 +1,7 @@
-import { useState } from 'react';
-import { ChevronRight, FileText, Plus, Trash2, GripVertical } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { ChevronRight, FileText, Plus, Trash2, GripVertical, CornerLeftUp } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { useDocumentStore } from '../../stores/useDocumentStore';
 import { useDocuments, useCreateDocument, useArchiveDocument } from '../../hooks/useDocuments';
 import ConfirmDialog from '../ConfirmDialog';
@@ -11,9 +10,10 @@ import type { Document } from '../../types';
 interface Props {
   document: Document;
   level: number;
+  activeDragId: string | null;
 }
 
-export default function SidebarItem({ document, level }: Props) {
+export default function SidebarItem({ document, level, activeDragId }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const { activeDocumentId, setActiveDocument } = useDocumentStore();
@@ -21,27 +21,33 @@ export default function SidebarItem({ document, level }: Props) {
   const createDocument = useCreateDocument();
   const archiveDocument = useArchiveDocument();
 
-  // DnD sortable — only enabled for root level (level === 0)
+  // Drag — always enabled for all levels
   const {
     attributes,
     listeners,
-    setNodeRef,
-    transform,
-    transition,
+    setNodeRef: setDraggableRef,
     isDragging,
-  } = useSortable({ id: document.id, disabled: level > 0 });
+  } = useDraggable({ id: document.id });
 
-  const style = level === 0
-    ? {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.4 : 1,
-      }
-    : {};
+  // Drop — disabled when this item is being dragged
+  const {
+    setNodeRef: setDroppableRef,
+    isOver,
+  } = useDroppable({ id: document.id, disabled: activeDragId === document.id });
+
+  // Combine refs
+  const setRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setDraggableRef(node);
+      setDroppableRef(node);
+    },
+    [setDraggableRef, setDroppableRef],
+  );
 
   const children = documents.filter((doc) => doc.parentDocumentId === document.id);
   const hasChildren = children.length > 0;
   const isActive = activeDocumentId === document.id;
+  const isBeingDragged = activeDragId === document.id;
 
   const handleCreate = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -65,38 +71,39 @@ export default function SidebarItem({ document, level }: Props) {
     setShowConfirm(false);
   };
 
-  const activeStyle: React.CSSProperties = { background: 'var(--bg-active)', color: 'var(--text-primary)' };
-  const idleStyle: React.CSSProperties = { background: 'transparent', color: 'var(--text-secondary)' };
+  const rowClasses = [
+    'sidebar-item',
+    'group flex items-center gap-1 rounded-md px-2 py-1 cursor-pointer text-sm select-none',
+    isActive ? 'is-active' : '',
+    isOver && !isBeingDragged ? 'is-drop-over' : '',
+  ].filter(Boolean).join(' ');
 
   return (
     <>
-      <div ref={setNodeRef} style={style}>
+      <div
+        ref={setRef}
+        style={{ opacity: isDragging ? 0.3 : 1 }}
+      >
         <div
-          className="group flex items-center gap-1 rounded-md px-2 py-1 cursor-pointer text-sm select-none transition-all duration-100"
-          style={{ paddingLeft: `${8 + level * 12}px`, ...(isActive ? activeStyle : idleStyle) }}
+          className={rowClasses}
+          style={{ paddingLeft: `${8 + level * 16}px` }}
           onClick={handleSelect}
-          onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
-          onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; } }}
         >
-          {/* Drag handle — only shown at root level */}
-          {level === 0 && (
-            <button
-              {...attributes}
-              {...listeners}
-              onClick={(e) => e.stopPropagation()}
-              className="shrink-0 w-4 h-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-40 hover:opacity-100! transition-opacity cursor-grab active:cursor-grabbing"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              <GripVertical size={12} />
-            </button>
-          )}
+          {/* Drag handle — all levels */}
+          <button
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 w-4 h-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            <GripVertical size={12} />
+          </button>
 
           {/* Toggle expand */}
           <button
             onClick={handleToggle}
-            className="shrink-0 w-4 h-4 flex items-center justify-center rounded transition-colors"
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-active)'; e.stopPropagation(); }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            className="shrink-0 w-4 h-4 flex items-center justify-center rounded transition-colors hover:bg-black/10 dark:hover:bg-white/10"
           >
             {hasChildren ? (
               <ChevronRight size={12} className={`transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} />
@@ -111,14 +118,12 @@ export default function SidebarItem({ document, level }: Props) {
           </span>
           <span className="flex-1 truncate">{document.title || 'Untitled'}</span>
 
-          {/* Action buttons */}
-          <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
+          {/* Action buttons — opacity transition (no layout shift) */}
+          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
             <button
               onClick={handleCreate}
               title="Tạo trang con"
-              className="p-0.5 rounded transition-colors"
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-active)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              className="p-0.5 rounded transition-colors hover:bg-black/10 dark:hover:bg-white/10"
             >
               <Plus size={13} />
             </button>
@@ -129,14 +134,24 @@ export default function SidebarItem({ document, level }: Props) {
             >
               <Trash2 size={13} />
             </button>
+            {/* Move to root — only shown for nested items */}
+            {level > 0 && (
+              <button
+                title="Chuyển lên root"
+                className="p-0.5 rounded transition-colors hover:bg-black/10 dark:hover:bg-white/10"
+                onClick={(e) => { e.stopPropagation(); /* handled by Sidebar via context */ (e.currentTarget as HTMLButtonElement).dispatchEvent(new CustomEvent('move-to-root', { detail: document.id, bubbles: true })); }}
+              >
+                <CornerLeftUp size={13} />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Children */}
-        {isExpanded && hasChildren && (
+        {/* Children — hide subtree of active drag to prevent DnD confusion */}
+        {isExpanded && hasChildren && !isBeingDragged && (
           <div>
             {children.map((child) => (
-              <SidebarItem key={child.id} document={child} level={level + 1} />
+              <SidebarItem key={child.id} document={child} level={level + 1} activeDragId={activeDragId} />
             ))}
           </div>
         )}

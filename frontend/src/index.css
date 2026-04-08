@@ -63,6 +63,26 @@
   height: 0;
 }
 
+/* ── Sidebar item hover (CSS-based, no JS jitter) ───────────── */
+.sidebar-item {
+  color: var(--text-secondary);
+  background: transparent;
+  transition: background 0.08s, color 0.08s;
+}
+.sidebar-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.sidebar-item.is-active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+.sidebar-item.is-drop-over {
+  background: var(--bg-active);
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
 /* ── Task List (Todo) ────────────────────────────────────────── */
 .tiptap ul[data-type="taskList"] {
   list-style: none;
