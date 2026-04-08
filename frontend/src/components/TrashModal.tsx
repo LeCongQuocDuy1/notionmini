@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { X, RotateCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import api from '../lib/axios';
-import { useDocumentStore } from '../stores/useDocumentStore';
+import { useArchivedDocuments, useRestoreDocument, useDeletePermanently } from '../hooks/useDocuments';
 import type { Document } from '../types';
 
 interface Props {
@@ -10,21 +9,9 @@ interface Props {
 }
 
 export default function TrashModal({ onClose }: Props) {
-  const { restoreDocument, deleteDocumentPermanently } = useDocumentStore();
-  const [archivedDocs, setArchivedDocs] = useState<Document[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchArchived = async () => {
-    setIsLoading(true);
-    try {
-      const { data } = await api.get<Document[]>('/documents?isArchived=true');
-      setArchivedDocs(data);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchArchived(); }, []);
+  const { data: archivedDocs = [], isLoading } = useArchivedDocuments();
+  const restoreDocument = useRestoreDocument();
+  const deletePermanently = useDeletePermanently();
 
   // Esc to close
   useEffect(() => {
@@ -34,14 +21,12 @@ export default function TrashModal({ onClose }: Props) {
   }, [onClose]);
 
   const handleRestore = async (doc: Document) => {
-    await restoreDocument(doc.id);
-    setArchivedDocs((prev) => prev.filter((d) => d.id !== doc.id));
+    await restoreDocument.mutateAsync(doc.id);
     toast.success(`Đã khôi phục "${doc.title || 'Untitled'}"`);
   };
 
   const handleDelete = async (doc: Document) => {
-    await deleteDocumentPermanently(doc.id);
-    setArchivedDocs((prev) => prev.filter((d) => d.id !== doc.id));
+    await deletePermanently.mutateAsync(doc.id);
     toast.success(`Đã xóa vĩnh viễn "${doc.title || 'Untitled'}"`);
   };
 
@@ -98,6 +83,7 @@ export default function TrashModal({ onClose }: Props) {
                       onClick={() => handleRestore(doc)}
                       title="Khôi phục"
                       className="p-1.5 rounded text-green-500 hover:bg-green-400/10 transition-colors"
+                      disabled={restoreDocument.isPending}
                     >
                       <RotateCcw size={14} />
                     </button>
@@ -105,6 +91,7 @@ export default function TrashModal({ onClose }: Props) {
                       onClick={() => handleDelete(doc)}
                       title="Xóa vĩnh viễn"
                       className="p-1.5 rounded text-red-400 hover:bg-red-400/10 transition-colors"
+                      disabled={deletePermanently.isPending}
                     >
                       <Trash2 size={14} />
                     </button>

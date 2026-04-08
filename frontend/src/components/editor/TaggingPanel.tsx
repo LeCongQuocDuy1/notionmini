@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { X, Plus, Tag as TagIcon } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axios';
+import { documentKey } from '../../hooks/useDocuments';
 import type { Tag, DocumentDetail } from '../../types';
 
 interface Props {
   document: DocumentDetail;
-  onUpdate: (updated: DocumentDetail) => void;
+  documentId: string;
 }
 
-export default function TaggingPanel({ document, onUpdate }: Props) {
+export default function TaggingPanel({ document, documentId }: Props) {
+  const queryClient = useQueryClient();
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [newTagName, setNewTagName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -21,13 +24,13 @@ export default function TaggingPanel({ document, onUpdate }: Props) {
   const attachedTagIds = new Set(document.tags.map((t) => t.tag.id));
 
   const handleAttach = async (tagId: string) => {
-    const { data } = await api.post<DocumentDetail>(`/documents/${document.id}/tags`, { tagId });
-    onUpdate(data);
+    const { data } = await api.post<DocumentDetail>(`/documents/${documentId}/tags`, { tagId });
+    queryClient.setQueryData<DocumentDetail>(documentKey(documentId), data);
   };
 
   const handleDetach = async (tagId: string) => {
-    await api.delete(`/documents/${document.id}/tags/${tagId}`);
-    onUpdate({
+    await api.delete(`/documents/${documentId}/tags/${tagId}`);
+    queryClient.setQueryData<DocumentDetail>(documentKey(documentId), {
       ...document,
       tags: document.tags.filter((t) => t.tag.id !== tagId),
     });
@@ -41,7 +44,6 @@ export default function TaggingPanel({ document, onUpdate }: Props) {
       const { data: tag } = await api.post<Tag>('/tags', { name: newTagName.trim() });
       setAllTags((prev) => [...prev, tag]);
       setNewTagName('');
-      // Tự động gắn tag vừa tạo vào document
       await handleAttach(tag.id);
     } finally {
       setIsCreating(false);

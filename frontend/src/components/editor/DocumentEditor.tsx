@@ -11,14 +11,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDocumentStore } from '../../stores/useDocumentStore';
+import { useDocument, useUpdateDocument, useArchiveDocument } from '../../hooks/useDocuments';
 import { useDebounce } from '../../hooks/useDebounce';
 import EditorHeader from './EditorHeader';
 import TaggingPanel from './TaggingPanel';
 import SlashCommandMenu from './SlashCommandMenu';
 import Breadcrumbs from '../Breadcrumbs';
 import { EditorSkeleton } from '../SkeletonLoader';
-import type { DocumentDetail } from '../../types';
-import api from '../../lib/axios';
 
 interface Props {
   documentId: string;
@@ -31,22 +30,13 @@ interface SlashMenuState {
 }
 
 export default function DocumentEditor({ documentId }: Props) {
-  const { updateDocument, archiveDocument } = useDocumentStore();
-  const [document, setDocument] = useState<DocumentDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { setActiveDocument } = useDocumentStore();
+  const { data: document, isLoading } = useDocument(documentId);
+  const updateDocument = useUpdateDocument();
+  const archiveDocument = useArchiveDocument();
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
   const slashMenuRef = useRef(slashMenu);
   useEffect(() => { slashMenuRef.current = slashMenu; }, [slashMenu]);
-
-  useEffect(() => {
-    let cancelled = false;
-    api.get<DocumentDetail>(`/documents/${documentId}`)
-      .then(({ data }) => {
-        if (!cancelled) { setDocument(data); setIsLoading(false); }
-      })
-      .catch(() => { if (!cancelled) setIsLoading(false); });
-    return () => { cancelled = true; };
-  }, [documentId]);
 
   // Auto-update browser tab title
   useEffect(() => {
@@ -59,7 +49,7 @@ export default function DocumentEditor({ documentId }: Props) {
   }, [document?.title]);
 
   const debouncedSave = useDebounce((content: string) => {
-    updateDocument(documentId, { content });
+    updateDocument.mutate({ id: documentId, data: { content } });
   }, 500);
 
   const editor = useEditor({
@@ -91,16 +81,13 @@ export default function DocumentEditor({ documentId }: Props) {
       const { selection } = state;
       const { $from } = selection;
 
-      // Get full text in current node up to cursor
       const textBefore = $from.parent.textContent.slice(0, $from.parentOffset);
       const slashIndex = textBefore.lastIndexOf('/');
 
       if (slashIndex !== -1) {
         const query = textBefore.slice(slashIndex + 1);
-        // Stop if query contains a space (user left the slash context)
         if (!query.includes(' ') && !query.includes('\n')) {
           const slashFrom = $from.start() + slashIndex;
-          // coordsAtPos returns viewport-relative coords
           const coords = view.coordsAtPos(slashFrom + 1);
           setSlashMenu({
             query,
@@ -128,7 +115,7 @@ export default function DocumentEditor({ documentId }: Props) {
     }
   }, [editor, document?.id, document?.content]);
 
-  // Esc blurs editor (only when slash menu is NOT open — menu handles its own Esc)
+  // Esc blurs editor (only when slash menu is NOT open)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !slashMenuRef.current) {
@@ -140,7 +127,8 @@ export default function DocumentEditor({ documentId }: Props) {
   }, [editor]);
 
   const handleArchive = async () => {
-    await archiveDocument(documentId);
+    await archiveDocument.mutateAsync(documentId);
+    setActiveDocument(null);
     toast.success('Đã chuyển vào thùng rác');
   };
 
@@ -230,10 +218,10 @@ export default function DocumentEditor({ documentId }: Props) {
       <Breadcrumbs documentId={documentId} />
 
       {/* Header (cover + icon + title) */}
-      <EditorHeader document={document} onUpdate={setDocument} />
+      <EditorHeader document={document} documentId={documentId} />
 
       {/* Tagging panel */}
-      <TaggingPanel document={document} onUpdate={setDocument} />
+      <TaggingPanel document={document} documentId={documentId} />
 
       {/* Editor body */}
       <EditorContent editor={editor} className="flex-1" />

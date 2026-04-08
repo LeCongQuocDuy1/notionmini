@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronRight, FileText, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDocumentStore } from '../../stores/useDocumentStore';
+import { useDocuments, useCreateDocument, useArchiveDocument } from '../../hooks/useDocuments';
 import type { Document } from '../../types';
 
 interface Props {
@@ -11,16 +12,18 @@ interface Props {
 
 export default function SidebarItem({ document, level }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { getChildren, createDocument, setActiveDocument, archiveDocument, activeDocumentId } =
-    useDocumentStore();
+  const { activeDocumentId, setActiveDocument } = useDocumentStore();
+  const { data: documents = [] } = useDocuments();
+  const createDocument = useCreateDocument();
+  const archiveDocument = useArchiveDocument();
 
-  const children = getChildren(document.id);
+  const children = documents.filter((doc) => doc.parentDocumentId === document.id);
   const hasChildren = children.length > 0;
   const isActive = activeDocumentId === document.id;
 
   const handleCreate = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const newDoc = await createDocument(document.id);
+    const newDoc = await createDocument.mutateAsync(document.id);
     setActiveDocument(newDoc.id);
     setIsExpanded(true);
     toast.success('Đã tạo trang con mới');
@@ -35,7 +38,8 @@ export default function SidebarItem({ document, level }: Props) {
 
   const handleArchive = (e: React.MouseEvent) => {
     e.stopPropagation();
-    archiveDocument(document.id);
+    archiveDocument.mutate(document.id);
+    if (activeDocumentId === document.id) setActiveDocument(null);
     toast.success(`Đã chuyển "${document.title || 'Untitled'}" vào thùng rác`);
   };
 

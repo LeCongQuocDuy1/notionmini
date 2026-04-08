@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { ImageIcon, Smile, X } from 'lucide-react';
-import { useDocumentStore } from '../../stores/useDocumentStore';
+import { useUpdateDocument } from '../../hooks/useDocuments';
 import { useDebounce } from '../../hooks/useDebounce';
 import type { DocumentDetail } from '../../types';
 
@@ -11,18 +11,17 @@ const EMOJI_LIST = [
 
 interface Props {
   document: DocumentDetail;
-  onUpdate: (updated: DocumentDetail) => void;
+  documentId: string;
 }
 
-export default function EditorHeader({ document, onUpdate }: Props) {
-  const { updateDocument } = useDocumentStore();
+export default function EditorHeader({ document, documentId }: Props) {
+  const updateDocument = useUpdateDocument();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isHoveringHeader, setIsHoveringHeader] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   const debouncedUpdateTitle = useDebounce((title: string) => {
-    updateDocument(document.id, { title });
-    onUpdate({ ...document, title });
+    updateDocument.mutate({ id: documentId, data: { title } });
   }, 500);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,15 +29,13 @@ export default function EditorHeader({ document, onUpdate }: Props) {
   };
 
   const handleEmojiSelect = (emoji: string) => {
-    updateDocument(document.id, { icon: emoji });
-    onUpdate({ ...document, icon: emoji });
+    updateDocument.mutate({ id: documentId, data: { icon: emoji } });
     setShowEmojiPicker(false);
   };
 
   const handleRemoveIcon = (e: React.MouseEvent) => {
     e.stopPropagation();
-    updateDocument(document.id, { icon: null });
-    onUpdate({ ...document, icon: null });
+    updateDocument.mutate({ id: documentId, data: { icon: null } });
   };
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,15 +44,13 @@ export default function EditorHeader({ document, onUpdate }: Props) {
     const reader = new FileReader();
     reader.onload = () => {
       const coverImage = reader.result as string;
-      updateDocument(document.id, { coverImage });
-      onUpdate({ ...document, coverImage });
+      updateDocument.mutate({ id: documentId, data: { coverImage } });
     };
     reader.readAsDataURL(file);
   };
 
   const handleRemoveCover = () => {
-    updateDocument(document.id, { coverImage: null });
-    onUpdate({ ...document, coverImage: null });
+    updateDocument.mutate({ id: documentId, data: { coverImage: null } });
   };
 
   return (

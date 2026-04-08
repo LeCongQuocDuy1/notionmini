@@ -1,12 +1,14 @@
 import { ChevronRight } from 'lucide-react';
 import { useDocumentStore } from '../stores/useDocumentStore';
+import { useDocuments } from '../hooks/useDocuments';
 
 interface Props {
   documentId: string;
 }
 
 export default function Breadcrumbs({ documentId }: Props) {
-  const { documents, setActiveDocument } = useDocumentStore();
+  const { setActiveDocument } = useDocumentStore();
+  const { data: documents = [] } = useDocuments();
 
   const chain: { id: string; title: string; icon: string | null }[] = [];
   let current = documents.find((d) => d.id === documentId);

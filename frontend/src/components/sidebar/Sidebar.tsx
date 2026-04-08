@@ -1,23 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Plus, Trash, LogOut, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useDocumentStore } from '../../stores/useDocumentStore';
+import { useDocuments, useCreateDocument } from '../../hooks/useDocuments';
 import SidebarItem from './SidebarItem';
 import TrashModal from '../TrashModal';
 import SearchModal from '../SearchModal';
 import { SidebarSkeleton } from '../SkeletonLoader';
+import { useEffect } from 'react';
 
 export default function Sidebar() {
   const { user, logout } = useAuthStore();
-  const { documents, isLoading, fetchDocuments, createDocument, setActiveDocument } =
-    useDocumentStore();
+  const { setActiveDocument } = useDocumentStore();
+  const { data: documents = [], isLoading } = useDocuments();
+  const createDocument = useCreateDocument();
   const [showTrash, setShowTrash] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-
-  useEffect(() => {
-    fetchDocuments();
-  }, [fetchDocuments]);
 
   // Cmd+K / Ctrl+K global shortcut
   useEffect(() => {
@@ -34,7 +33,7 @@ export default function Sidebar() {
   const rootDocuments = documents.filter((doc) => doc.parentDocumentId === null);
 
   const handleCreateRoot = async () => {
-    const newDoc = await createDocument();
+    const newDoc = await createDocument.mutateAsync();
     setActiveDocument(newDoc.id);
     toast.success('Đã tạo trang mới');
   };
