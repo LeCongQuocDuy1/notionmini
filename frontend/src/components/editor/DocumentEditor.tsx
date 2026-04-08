@@ -1,13 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
+import Image from '@tiptap/extension-image';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableHeader } from '@tiptap/extension-table-header';
+import { TableCell } from '@tiptap/extension-table-cell';
 import {
-  Bold, Italic, Underline as UnderlineIcon, Strikethrough,
-  List, ListOrdered, AlignLeft, AlignCenter, AlignRight,
-  Heading1, Heading2, Heading3, Code, Quote, Trash2
+  Bold, Italic, Underline as UnderlineIcon, Strikethrough, Code,
+  Heading1, Heading2, Heading3, Trash2, GripVertical,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDocumentStore } from '../../stores/useDocumentStore';
@@ -17,6 +23,7 @@ import EditorHeader from './EditorHeader';
 import TaggingPanel from './TaggingPanel';
 import SlashCommandMenu from './SlashCommandMenu';
 import Breadcrumbs from '../Breadcrumbs';
+import ConfirmDialog from '../ConfirmDialog';
 import { EditorSkeleton } from '../SkeletonLoader';
 
 interface Props {
@@ -29,14 +36,26 @@ interface SlashMenuState {
   position: { top: number; left: number };
 }
 
+interface BlockHandle {
+  top: number;
+  height: number;
+  node: Element | null;
+}
+
 export default function DocumentEditor({ documentId }: Props) {
   const { setActiveDocument } = useDocumentStore();
   const { data: document, isLoading } = useDocument(documentId);
   const updateDocument = useUpdateDocument();
   const archiveDocument = useArchiveDocument();
+
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
   const slashMenuRef = useRef(slashMenu);
   useEffect(() => { slashMenuRef.current = slashMenu; }, [slashMenu]);
+
+  const [blockHandle, setBlockHandle] = useState<BlockHandle | null>(null);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-update browser tab title
   useEffect(() => {
@@ -57,9 +76,20 @@ export default function DocumentEditor({ documentId }: Props) {
       StarterKit,
       Underline,
       Placeholder.configure({
-        placeholder: 'Bắt đầu viết, nhấn "/" để chọn block...',
+        placeholder: ({ node }) => {
+          if (node.type.name === 'heading') return 'Tiêu đề...';
+          return 'Nhấn "/" để chèn nội dung, hoặc bắt đầu viết...';
+        },
+        showOnlyCurrent: true,
       }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Image.configure({ allowBase64: true, inline: false }),
+      TaskList,
+      TaskItem.configure({ nested: true }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content: '',
     editorProps: {
@@ -72,15 +102,38 @@ export default function DocumentEditor({ documentId }: Props) {
     },
   });
 
-  // Detect slash command via transaction events
+  // ── Block handle on mousemove ──────────────────────────────────
+  const handleEditorMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!editorContainerRef.current) return;
+    const container = editorContainerRef.current;
+    const containerRect = container.getBoundingClientRect();
+
+    // Find the block element under the cursor
+    const target = window.document.elementFromPoint(e.clientX, e.clientY);
+    if (!target) return;
+
+    const blockSelector = 'p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre, table, .task-list-item, hr';
+    const block = target.closest(blockSelector);
+
+    if (!block || !container.contains(block)) {
+      setBlockHandle(null);
+      return;
+    }
+
+    const rect = block.getBoundingClientRect();
+    setBlockHandle({
+      top: rect.top - containerRect.top + container.scrollTop,
+      height: rect.height,
+      node: block,
+    });
+  }, []);
+
+  // ── Detect slash command ───────────────────────────────────────
   useEffect(() => {
     if (!editor) return;
-
     const handleTransaction = () => {
       const { state, view } = editor;
-      const { selection } = state;
-      const { $from } = selection;
-
+      const { $from } = state.selection;
       const textBefore = $from.parent.textContent.slice(0, $from.parentOffset);
       const slashIndex = textBefore.lastIndexOf('/');
 
@@ -89,46 +142,68 @@ export default function DocumentEditor({ documentId }: Props) {
         if (!query.includes(' ') && !query.includes('\n')) {
           const slashFrom = $from.start() + slashIndex;
           const coords = view.coordsAtPos(slashFrom + 1);
-          setSlashMenu({
-            query,
-            slashFrom,
-            position: { top: coords.bottom + 6, left: coords.left },
-          });
+          setSlashMenu({ query, slashFrom, position: { top: coords.bottom + 6, left: coords.left } });
           return;
         }
       }
       setSlashMenu(null);
     };
-
     editor.on('transaction', handleTransaction);
     return () => { editor.off('transaction', handleTransaction); };
   }, [editor]);
 
-  // Set editor content on load
+  // ── Set editor content on load ─────────────────────────────────
   useEffect(() => {
     if (editor && document?.content !== undefined) {
-      const current = editor.getHTML();
       const incoming = document.content ?? '';
-      if (current !== incoming) {
+      if (editor.getHTML() !== incoming) {
         editor.commands.setContent(incoming, { emitUpdate: false });
       }
     }
   }, [editor, document?.id, document?.content]);
 
-  // Esc blurs editor (only when slash menu is NOT open)
+  // ── Esc blurs editor ───────────────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !slashMenuRef.current) {
-        editor?.commands.blur();
-      }
+      if (e.key === 'Escape' && !slashMenuRef.current) editor?.commands.blur();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [editor]);
 
-  const handleArchive = async () => {
+  // ── Image upload handler ───────────────────────────────────────
+  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editor) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      editor.chain().focus().setImage({ src: reader.result as string }).run();
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  // ── Delete block ───────────────────────────────────────────────
+  const handleDeleteBlock = () => {
+    if (!editor || !blockHandle?.node) return;
+    const view = editor.view;
+    const pos = view.posAtDOM(blockHandle.node, 0);
+    if (pos === undefined) return;
+    const resolvedPos = editor.state.doc.resolve(pos);
+    const node = resolvedPos.node(resolvedPos.depth);
+    editor
+      .chain()
+      .focus()
+      .setNodeSelection(resolvedPos.before(resolvedPos.depth))
+      .deleteSelection()
+      .run();
+    setBlockHandle(null);
+  };
+
+  const handleArchiveConfirm = async () => {
     await archiveDocument.mutateAsync(documentId);
     setActiveDocument(null);
+    setShowArchiveConfirm(false);
     toast.success('Đã chuyển vào thùng rác');
   };
 
@@ -149,84 +224,137 @@ export default function DocumentEditor({ documentId }: Props) {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto" style={{ background: 'var(--bg-app)' }}>
-      {/* Toolbar */}
-      <div
-        className="sticky top-0 z-10 px-16 py-1.5 flex items-center gap-0.5 flex-wrap border-b"
-        style={{ background: 'var(--bg-app)', borderColor: 'var(--border)' }}
-      >
-        <ToolbarButton onClick={() => editor?.chain().focus().toggleBold().run()} active={editor?.isActive('bold')} title="Bold">
-          <Bold size={14} />
-        </ToolbarButton>
-        <ToolbarButton onClick={() => editor?.chain().focus().toggleItalic().run()} active={editor?.isActive('italic')} title="Italic">
-          <Italic size={14} />
-        </ToolbarButton>
-        <ToolbarButton onClick={() => editor?.chain().focus().toggleUnderline().run()} active={editor?.isActive('underline')} title="Underline">
-          <UnderlineIcon size={14} />
-        </ToolbarButton>
-        <ToolbarButton onClick={() => editor?.chain().focus().toggleStrike().run()} active={editor?.isActive('strike')} title="Strike">
-          <Strikethrough size={14} />
-        </ToolbarButton>
-        <ToolbarButton onClick={() => editor?.chain().focus().toggleCode().run()} active={editor?.isActive('code')} title="Inline code">
-          <Code size={14} />
-        </ToolbarButton>
-
-        <Divider />
-
-        <ToolbarButton onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} active={editor?.isActive('heading', { level: 1 })} title="H1">
-          <Heading1 size={14} />
-        </ToolbarButton>
-        <ToolbarButton onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} active={editor?.isActive('heading', { level: 2 })} title="H2">
-          <Heading2 size={14} />
-        </ToolbarButton>
-        <ToolbarButton onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} active={editor?.isActive('heading', { level: 3 })} title="H3">
-          <Heading3 size={14} />
-        </ToolbarButton>
-
-        <Divider />
-
-        <ToolbarButton onClick={() => editor?.chain().focus().toggleBulletList().run()} active={editor?.isActive('bulletList')} title="Bullet list">
-          <List size={14} />
-        </ToolbarButton>
-        <ToolbarButton onClick={() => editor?.chain().focus().toggleOrderedList().run()} active={editor?.isActive('orderedList')} title="Ordered list">
-          <ListOrdered size={14} />
-        </ToolbarButton>
-        <ToolbarButton onClick={() => editor?.chain().focus().toggleBlockquote().run()} active={editor?.isActive('blockquote')} title="Quote">
-          <Quote size={14} />
-        </ToolbarButton>
-
-        <Divider />
-
-        <ToolbarButton onClick={() => editor?.chain().focus().setTextAlign('left').run()} active={editor?.isActive({ textAlign: 'left' })} title="Align left">
-          <AlignLeft size={14} />
-        </ToolbarButton>
-        <ToolbarButton onClick={() => editor?.chain().focus().setTextAlign('center').run()} active={editor?.isActive({ textAlign: 'center' })} title="Align center">
-          <AlignCenter size={14} />
-        </ToolbarButton>
-        <ToolbarButton onClick={() => editor?.chain().focus().setTextAlign('right').run()} active={editor?.isActive({ textAlign: 'right' })} title="Align right">
-          <AlignRight size={14} />
-        </ToolbarButton>
-
-        <div className="ml-auto">
-          <ToolbarButton onClick={handleArchive} title="Chuyển vào thùng rác" className="text-red-500 hover:bg-red-500/10">
-            <Trash2 size={14} />
-          </ToolbarButton>
-        </div>
+    <div className="flex-1 flex flex-col overflow-auto relative" style={{ background: 'var(--bg-app)' }}>
+      {/* Tiny top bar — only archive button */}
+      <div className="sticky top-0 z-10 flex justify-end px-4 py-1.5 border-b" style={{ background: 'var(--bg-app)', borderColor: 'var(--border)' }}>
+        <button
+          onClick={() => setShowArchiveConfirm(true)}
+          title="Chuyển vào thùng rác"
+          className="flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#f87171'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+        >
+          <Trash2 size={13} /> Xóa trang
+        </button>
       </div>
 
       {/* Breadcrumbs */}
       <Breadcrumbs documentId={documentId} />
 
-      {/* Header (cover + icon + title) */}
+      {/* Header */}
       <EditorHeader document={document} documentId={documentId} />
 
       {/* Tagging panel */}
       <TaggingPanel document={document} documentId={documentId} />
 
-      {/* Editor body */}
-      <EditorContent editor={editor} className="flex-1" />
+      {/* Editor with block handle */}
+      <div
+        ref={editorContainerRef}
+        className="flex-1 relative"
+        onMouseMove={handleEditorMouseMove}
+        onMouseLeave={() => setBlockHandle(null)}
+      >
+        {/* Floating block action bar */}
+        {blockHandle && (
+          <div
+            className="absolute flex items-center gap-0.5 z-10 select-none"
+            style={{
+              top: blockHandle.top + blockHandle.height / 2 - 14,
+              left: '20px',
+            }}
+          >
+            <button
+              className="w-6 h-6 flex items-center justify-center rounded opacity-40 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+              style={{ color: 'var(--text-muted)' }}
+              title="Kéo để di chuyển"
+            >
+              <GripVertical size={14} />
+            </button>
+            <button
+              onClick={handleDeleteBlock}
+              className="w-6 h-6 flex items-center justify-center rounded opacity-40 hover:opacity-100 transition-opacity text-red-400"
+              title="Xóa khối này"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+        )}
 
-      {/* Slash command menu — rendered as fixed overlay */}
+        {/* Bubble menu — appears on text selection */}
+        {editor && (
+          <BubbleMenu
+            editor={editor}
+            tippyOptions={{ duration: 150, placement: 'top' }}
+            className="flex items-center gap-0.5 rounded-lg border shadow-xl px-1.5 py-1"
+            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+          >
+            <BubbleBtn
+              onClick={() => editor.chain().focus().toggleBold().run()}
+              active={editor.isActive('bold')}
+              title="Bold (⌘B)"
+            >
+              <Bold size={13} />
+            </BubbleBtn>
+            <BubbleBtn
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+              active={editor.isActive('italic')}
+              title="Italic (⌘I)"
+            >
+              <Italic size={13} />
+            </BubbleBtn>
+            <BubbleBtn
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+              active={editor.isActive('underline')}
+              title="Underline (⌘U)"
+            >
+              <UnderlineIcon size={13} />
+            </BubbleBtn>
+            <BubbleBtn
+              onClick={() => editor.chain().focus().toggleStrike().run()}
+              active={editor.isActive('strike')}
+              title="Strikethrough"
+            >
+              <Strikethrough size={13} />
+            </BubbleBtn>
+            <BubbleBtn
+              onClick={() => editor.chain().focus().toggleCode().run()}
+              active={editor.isActive('code')}
+              title="Inline code"
+            >
+              <Code size={13} />
+            </BubbleBtn>
+
+            <div className="w-px h-4 mx-0.5" style={{ background: 'var(--border)' }} />
+
+            <BubbleBtn
+              onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+              active={editor.isActive('heading', { level: 1 })}
+              title="H1"
+            >
+              <Heading1 size={13} />
+            </BubbleBtn>
+            <BubbleBtn
+              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+              active={editor.isActive('heading', { level: 2 })}
+              title="H2"
+            >
+              <Heading2 size={13} />
+            </BubbleBtn>
+            <BubbleBtn
+              onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+              active={editor.isActive('heading', { level: 3 })}
+              title="H3"
+            >
+              <Heading3 size={13} />
+            </BubbleBtn>
+          </BubbleMenu>
+        )}
+
+        <EditorContent editor={editor} className="flex-1" />
+      </div>
+
+      {/* Slash command menu */}
       {slashMenu && editor && (
         <SlashCommandMenu
           editor={editor}
@@ -234,33 +362,50 @@ export default function DocumentEditor({ documentId }: Props) {
           slashFrom={slashMenu.slashFrom}
           position={slashMenu.position}
           onClose={() => setSlashMenu(null)}
+          onImageUpload={() => imageInputRef.current?.click()}
+        />
+      )}
+
+      {/* Hidden image file input */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageFile}
+      />
+
+      {/* Archive confirm dialog */}
+      {showArchiveConfirm && (
+        <ConfirmDialog
+          title="Chuyển trang này vào thùng rác?"
+          description="Bạn có thể khôi phục lại từ thùng rác bất kỳ lúc nào."
+          confirmLabel="Xóa trang"
+          onConfirm={handleArchiveConfirm}
+          onCancel={() => setShowArchiveConfirm(false)}
         />
       )}
     </div>
   );
 }
 
-function Divider() {
-  return <div className="w-px h-4 mx-1" style={{ background: 'var(--border)' }} />;
-}
-
-function ToolbarButton({
-  onClick, active, title, children, className = ''
+function BubbleBtn({
+  onClick, active, title, children,
 }: {
-  onClick?: () => void;
+  onClick: () => void;
   active?: boolean;
   title?: string;
   children: React.ReactNode;
-  className?: string;
 }) {
   return (
     <button
       onClick={onClick}
       title={title}
-      className={`p-1.5 rounded transition-colors ${className}`}
-      style={active
-        ? { background: 'var(--bg-active)', color: 'var(--text-primary)' }
-        : { color: 'var(--text-secondary)' }
+      className="w-7 h-7 flex items-center justify-center rounded transition-colors"
+      style={
+        active
+          ? { background: 'var(--bg-active)', color: 'var(--text-primary)' }
+          : { color: 'var(--text-secondary)' }
       }
       onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
       onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; } }}
