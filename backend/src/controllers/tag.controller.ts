@@ -3,6 +3,18 @@ import { ZodError } from 'zod';
 import { AuthRequest } from '../types';
 import * as tagService from '../services/tag.service';
 
+const PRISMA_ERROR_NAMES = new Set([
+  'PrismaClientKnownRequestError',
+  'PrismaClientUnknownRequestError',
+  'PrismaClientInitializationError',
+  'PrismaClientRustPanicError',
+  'PrismaClientValidationError',
+]);
+
+function isSafeError(error: Error): boolean {
+  return !PRISMA_ERROR_NAMES.has(error.constructor.name);
+}
+
 export const createTag = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const input = tagService.createTagSchema.parse(req.body);
@@ -13,11 +25,11 @@ export const createTag = async (req: AuthRequest, res: Response): Promise<void> 
       res.status(400).json({ message: error.issues[0].message });
       return;
     }
-    if (error instanceof Error) {
+    if (error instanceof Error && isSafeError(error)) {
       res.status(409).json({ message: error.message });
       return;
     }
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Đã có lỗi xảy ra, vui lòng thử lại sau' });
   }
 };
 
@@ -43,11 +55,11 @@ export const attachTag = async (req: AuthRequest, res: Response): Promise<void> 
     const doc = await tagService.attachTag(req.user!.userId, documentId as string, tagId);
     res.status(200).json(doc);
   } catch (error) {
-    if (error instanceof Error) {
+    if (error instanceof Error && isSafeError(error)) {
       res.status(400).json({ message: error.message });
       return;
     }
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Đã có lỗi xảy ra, vui lòng thử lại sau' });
   }
 };
 
@@ -61,11 +73,11 @@ export const detachTag = async (req: AuthRequest, res: Response): Promise<void> 
     );
     res.status(200).json(result);
   } catch (error) {
-    if (error instanceof Error) {
+    if (error instanceof Error && isSafeError(error)) {
       res.status(404).json({ message: error.message });
       return;
     }
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Đã có lỗi xảy ra, vui lòng thử lại sau' });
   }
 };
 
@@ -74,10 +86,10 @@ export const deleteTag = async (req: AuthRequest, res: Response): Promise<void> 
     const result = await tagService.deleteTag(req.user!.userId, req.params.tagId as string);
     res.status(200).json(result);
   } catch (error) {
-    if (error instanceof Error) {
+    if (error instanceof Error && isSafeError(error)) {
       res.status(404).json({ message: error.message });
       return;
     }
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Đã có lỗi xảy ra, vui lòng thử lại sau' });
   }
 };
