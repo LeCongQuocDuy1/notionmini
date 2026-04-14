@@ -1,7 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="6" fill="#191919"/>
-  <rect x="7" y="8" width="18" height="2.5" rx="1.25" fill="white"/>
-  <rect x="7" y="13" width="14" height="2" rx="1" fill="#888"/>
-  <rect x="7" y="17.5" width="16" height="2" rx="1" fill="#888"/>
-  <rect x="7" y="22" width="11" height="2" rx="1" fill="#888"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Cream background -->
+  <rect width="100" height="100" rx="18" fill="#f0ebe0"/>
+  <!-- Bold dark green N -->
+  <path d="M22 76 L22 24 L34 24 L62 60 L62 24 L74 24 L74 76 L62 76 L34 40 L34 76 Z" fill="#1b4d35"/>
+  <!-- Red dot (top-right of N, like the i-dot) -->
+  <circle cx="69" cy="20" r="9" fill="#c0392b"/>
 </svg>

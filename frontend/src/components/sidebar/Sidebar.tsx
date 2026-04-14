@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Settings, Trash, LogOut, Search, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -13,7 +14,6 @@ import { useDocuments, useCreateDocument, useMoveDocument } from '../../hooks/us
 import SidebarItem from './SidebarItem';
 import TrashModal from '../TrashModal';
 import SearchModal from '../SearchModal';
-import SettingsModal from '../SettingsModal';
 import { SidebarSkeleton } from '../SkeletonLoader';
 import type { Document } from '../../types';
 
@@ -51,6 +51,8 @@ function RootDropZone({ active }: { active: boolean }) {
 }
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuthStore();
   const { setActiveDocument } = useDocumentStore();
   const { data: documents = [], isLoading } = useDocuments();
@@ -59,8 +61,8 @@ export default function Sidebar() {
 
   const [showTrash, setShowTrash] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const isOnSettings = location.pathname === '/settings';
 
   const rootDocuments = documents.filter((doc) => doc.parentDocumentId === null && !doc.isArchived);
   const activeDragDoc = activeDragId ? documents.find((d) => d.id === activeDragId) : null;
@@ -142,43 +144,70 @@ export default function Sidebar() {
   return (
     <>
       <aside
-        className="w-60 h-screen flex flex-col shrink-0 select-none border-r"
-        style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}
+        className="w-72 h-screen flex flex-col shrink-0 select-none"
+        style={{
+          background: 'var(--bg-sidebar)',
+          borderRight: '1px solid var(--border)',
+        }}
       >
-        {/* Header */}
-        <div className="flex items-center gap-2 px-3 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-          <div className="w-6 h-6 bg-white rounded flex items-center justify-center shrink-0 shadow-sm">
-            <span className="text-black font-bold text-xs">N</span>
+        {/* ── Brand header ─────────────────────────────────────── */}
+        <div className="flex items-center gap-3 px-5 py-5">
+          {/* Logo: N. Notion Mini */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {/* N. logomark */}
+            <svg width="36" height="36" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+              <rect width="100" height="100" rx="18" fill="#f0ebe0"/>
+              <path d="M22 76 L22 24 L34 24 L62 60 L62 24 L74 24 L74 76 L62 76 L34 40 L34 76 Z" fill="#1b4d35"/>
+              <circle cx="69" cy="20" r="9" fill="#c0392b"/>
+            </svg>
+            <div className="flex-1 min-w-0">
+              <p className="font-serif text-base font-semibold truncate leading-tight" style={{ color: 'var(--color-forest)' }}>
+                Notion Mini
+              </p>
+              <p className="text-[10px] tracking-widest uppercase opacity-60 truncate" style={{ color: 'var(--text-secondary)' }}>
+                {user?.name ?? user?.email}
+              </p>
+            </div>
           </div>
-          <span className="text-sm font-medium truncate flex-1" style={{ color: 'var(--text-primary)' }}>
-            {user?.name ?? user?.email}
-          </span>
         </div>
 
-        {/* Search button */}
-        <button
-          onClick={() => setShowSearch(true)}
-          className="sidebar-item flex items-center gap-2 mx-2 mt-2 px-2 py-1.5 rounded-md text-sm"
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-          style={btnBase}
-        >
-          <Search size={14} />
-          <span className="flex-1 text-left">Tìm kiếm</span>
-          <kbd className="text-xs rounded px-1 border" style={{ background: 'var(--bg-hover)', borderColor: 'var(--border)' }}>⌘K</kbd>
-        </button>
+        {/* ── Search button ─────────────────────────────────────── */}
+        <div className="px-3 mb-1">
+          <button
+            onClick={() => setShowSearch(true)}
+            className="w-full flex items-center gap-2.5 px-4 py-2 rounded-full text-sm transition-all"
+            style={{
+              background: 'var(--bg-hover)',
+              color: 'var(--text-secondary)',
+              transition: 'background 0.12s ease, color 0.12s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-active)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+          >
+            <Search size={13} />
+            <span className="flex-1 text-left text-xs">Tìm kiếm trang...</span>
+            <kbd className="text-[10px] rounded-full px-1.5 py-0.5 font-sans" style={{ background: 'var(--bg-active)', color: 'var(--text-muted)' }}>⌘K</kbd>
+          </button>
+        </div>
 
-        {/* Document list with DnD */}
-        <div className="flex-1 overflow-y-auto py-2 px-1 mt-1">
+        {/* ── Section label ─────────────────────────────────────── */}
+        <div className="px-5 pt-3 pb-1">
+          <p className="text-[10px] tracking-[0.18em] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Trang của bạn</p>
+        </div>
+
+        {/* ── Document list with DnD ────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto px-2 pb-2">
           {isLoading ? (
             <SidebarSkeleton />
           ) : rootDocuments.length === 0 && !activeDragId ? (
-            <div className="px-3 py-4 text-center">
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Chưa có trang nào</p>
+            <div className="px-3 py-5 text-center">
+              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Chưa có trang nào</p>
               <button
                 onClick={handleCreateRoot}
-                className="mt-2 text-xs px-3 py-1.5 rounded-md transition-colors"
-                style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
+                className="text-xs px-4 py-1.5 rounded-full font-medium transition-all"
+                style={{ background: 'var(--color-forest)', color: 'var(--color-cream)', transition: 'opacity 0.15s ease' }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
               >
                 + Tạo trang đầu tiên
               </button>
@@ -194,20 +223,16 @@ export default function Sidebar() {
               {rootDocuments.map((doc) => (
                 <SidebarItem key={doc.id} document={doc} level={0} activeDragId={activeDragId} />
               ))}
-
-              {/* Drop zone to move back to root */}
               <RootDropZone active={activeDragId !== null} />
-
-              {/* Drag ghost overlay */}
               <DragOverlay dropAnimation={null}>
                 {activeDragDoc && (
                   <div
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm shadow-xl border"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full text-sm shadow-xl"
                     style={{
-                      background: 'var(--bg-surface)',
-                      borderColor: 'var(--border)',
+                      background: 'var(--bg-sidebar)',
+                      border: '1px solid var(--border)',
                       color: 'var(--text-primary)',
-                      maxWidth: '220px',
+                      maxWidth: '240px',
                     }}
                   >
                     <span className="shrink-0">{activeDragDoc.icon ?? <FileText size={14} />}</span>
@@ -219,23 +244,47 @@ export default function Sidebar() {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="border-t p-2 space-y-0.5" style={{ borderColor: 'var(--border)' }}>
+        {/* ── New page button ───────────────────────────────────── */}
+        <div className="px-3 pb-3">
+          <button
+            onClick={handleCreateRoot}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold shadow-md transition-all"
+            style={{
+              background: 'var(--color-terracotta)',
+              color: '#fff',
+              transition: 'opacity 0.15s ease, transform 0.15s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'scale(1.02)'; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; }}
+          >
+            <FileText size={14} />
+            Trang mới
+          </button>
+        </div>
+
+        {/* ── Footer ───────────────────────────────────────────── */}
+        <div className="px-3 pb-4 pt-2 space-y-0.5 border-t" style={{ borderColor: 'var(--border)' }}>
           {[
-            { icon: <Trash size={15} />, label: 'Thùng rác', onClick: () => setShowTrash(true), danger: false },
-            { icon: <Settings size={15} />, label: 'Cài đặt', onClick: () => setShowSettings(true), danger: false },
-            { icon: <LogOut size={15} />, label: 'Đăng xuất', onClick: logout, danger: true },
-          ].map(({ icon, label, onClick, danger }) => (
+            { icon: <Trash size={14} />, label: 'Thùng rác', onClick: () => setShowTrash(true), danger: false, active: false },
+            { icon: <Settings size={14} />, label: 'Cài đặt', onClick: () => navigate('/settings'), danger: false, active: isOnSettings },
+            { icon: <LogOut size={14} />, label: 'Đăng xuất', onClick: logout, danger: true, active: false },
+          ].map(({ icon, label, onClick, danger, active }) => (
             <button
               key={label}
               onClick={onClick}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors"
-              style={btnBase}
+              className="w-full flex items-center gap-3 px-4 py-2 rounded-full text-sm font-medium"
+              style={{
+                background: active ? 'var(--color-forest)' : 'transparent',
+                color: active ? 'var(--color-cream)' : 'var(--text-secondary)',
+                transition: 'background 0.12s ease, color 0.12s ease',
+              }}
               onMouseEnter={e => {
-                e.currentTarget.style.background = 'var(--bg-hover)';
-                e.currentTarget.style.color = danger ? '#f87171' : 'var(--text-primary)';
+                if (active) return;
+                e.currentTarget.style.background = danger ? 'rgba(239,68,68,0.08)' : 'var(--bg-hover)';
+                e.currentTarget.style.color = danger ? '#ef4444' : 'var(--text-primary)';
               }}
               onMouseLeave={e => {
+                if (active) return;
                 e.currentTarget.style.background = 'transparent';
                 e.currentTarget.style.color = 'var(--text-secondary)';
               }}
@@ -249,7 +298,6 @@ export default function Sidebar() {
 
       {showTrash && <TrashModal onClose={() => setShowTrash(false)} />}
       {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </>
   );
 }
