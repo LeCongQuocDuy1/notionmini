@@ -60,22 +60,34 @@ export default function CoverPicker({ onSelect, onClose }: Props) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div
+      className="modal-backdrop fixed inset-0 z-80 flex items-center justify-center p-4"
+      style={{ background: 'rgba(27,48,34,0.45)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
       <div
-        className="border rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden"
-        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
-        onClick={(e) => e.stopPropagation()}
+        className="modal-panel w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
+        style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border)' }}
+        onClick={e => e.stopPropagation()}
       >
+        {/* Header */}
+        <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          <h3 className="font-serif text-base font-semibold" style={{ color: 'var(--color-forest)' }}>
+            Chọn Cover
+          </h3>
+        </div>
+
         {/* Tabs */}
-        <div className="flex border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex gap-1 px-4 pt-3 pb-0">
           {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className="flex-1 py-2.5 text-xs font-medium transition-colors"
+              className="px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all"
               style={{
-                color: tab === t.key ? 'var(--text-primary)' : 'var(--text-muted)',
-                borderBottom: tab === t.key ? '2px solid var(--text-primary)' : '2px solid transparent',
+                background: tab === t.key ? 'var(--color-forest)' : 'transparent',
+                color: tab === t.key ? 'var(--color-cream)' : 'var(--text-muted)',
+                transition: 'background 0.15s ease, color 0.15s ease',
               }}
             >
               {t.label}
@@ -83,15 +95,17 @@ export default function CoverPicker({ onSelect, onClose }: Props) {
           ))}
         </div>
 
-        <div className="p-4">
+        <div className="p-4 pt-3">
           {tab === 'color' && (
             <div className="grid grid-cols-6 gap-2">
               {SOLID_COLORS.map((c) => (
                 <button
                   key={c}
                   onClick={() => onSelect(c)}
-                  className="w-full aspect-square rounded-md border-2 border-transparent hover:border-white transition-all"
-                  style={{ background: c }}
+                  className="w-full aspect-square rounded-xl border-2 border-transparent hover:scale-105"
+                  style={{ background: c, transition: 'border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease' }}
+                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 0 2px var(--color-terracotta)'}
+                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
                 />
               ))}
             </div>
@@ -103,8 +117,10 @@ export default function CoverPicker({ onSelect, onClose }: Props) {
                 <button
                   key={i}
                   onClick={() => onSelect(g)}
-                  className="w-full h-16 rounded-md border-2 border-transparent hover:border-white transition-all"
-                  style={{ background: g }}
+                  className="w-full h-16 rounded-xl hover:scale-[1.03]"
+                  style={{ background: g, transition: 'transform 0.12s ease, box-shadow 0.12s ease' }}
+                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 0 2px var(--color-terracotta)'}
+                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
                 />
               ))}
             </div>
@@ -116,8 +132,10 @@ export default function CoverPicker({ onSelect, onClose }: Props) {
                 <button
                   key={i}
                   onClick={() => onSelect(s)}
-                  className="w-full h-16 rounded-md border-2 border-transparent hover:border-white transition-all"
-                  style={{ background: s }}
+                  className="w-full h-16 rounded-xl hover:scale-[1.03]"
+                  style={{ background: s, transition: 'transform 0.12s ease, box-shadow 0.12s ease' }}
+                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 0 2px var(--color-terracotta)'}
+                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
                 />
               ))}
             </div>
@@ -126,14 +144,16 @@ export default function CoverPicker({ onSelect, onClose }: Props) {
           {tab === 'upload' && (
             <div
               onClick={() => fileRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-2 h-28 rounded-lg border-2 border-dashed cursor-pointer transition-colors"
+              className="flex flex-col items-center justify-center gap-3 h-28 rounded-xl border-2 border-dashed cursor-pointer transition-all"
               style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--text-secondary)'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-terracotta)'; e.currentTarget.style.color = 'var(--color-terracotta)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
             >
               <Upload size={20} />
-              <p className="text-sm">Nhấn để chọn ảnh</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>PNG, JPG, WEBP</p>
+              <div className="text-center">
+                <p className="text-sm font-medium">Nhấn để chọn ảnh</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>PNG, JPG, WEBP</p>
+              </div>
             </div>
           )}
         </div>

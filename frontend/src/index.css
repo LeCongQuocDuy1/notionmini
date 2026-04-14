@@ -3,19 +3,33 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ── Font families ───────────────────────────────────────────── */
+:root {
+  --font-serif: 'Noto Serif', Georgia, serif;
+  --font-sans:  'Manrope', system-ui, sans-serif;
+}
+
+body { font-family: var(--font-sans); }
+.font-serif, h1, h2, h3 { font-family: var(--font-serif); }
+
 /* ── Theme CSS Variables ─────────────────────────────────────── */
 :root {
-  --bg-app:      #f7f7f5;
-  --bg-sidebar:  #f0f0ef;
+  /* Stitch Atelier palette — Light */
+  --bg-app:      #f5f5dc;          /* linen/cream */
+  --bg-sidebar:  #fbfbe2;          /* warm cream */
   --bg-surface:  #ffffff;
-  --bg-hover:    rgba(0, 0, 0, 0.05);
-  --bg-active:   rgba(0, 0, 0, 0.09);
-  --bg-input:    rgba(0, 0, 0, 0.04);
-  --border:      #e5e5e4;
-  --border-soft: #ededed;
-  --text-primary:   #191919;
-  --text-secondary: #787774;
-  --text-muted:     #acaba8;
+  --bg-hover:    rgba(27,48,34,0.06);   /* forest-green tint */
+  --bg-active:   rgba(27,48,34,0.12);
+  --bg-input:    #f5f5dc;
+  --border:      #e4e4cc;
+  --border-soft: #efefd7;
+  --text-primary:   #1b1d0e;
+  --text-secondary: #434843;
+  --text-muted:     #737973;
+  /* brand */
+  --color-forest:    #1b3022;
+  --color-terracotta:#9f402d;
+  --color-cream:     #fbfbe2;
 }
 
 :root.dark {
@@ -27,9 +41,12 @@
   --bg-input:    #2a2a2a;
   --border:      #2f2f2f;
   --border-soft: #262626;
-  --text-primary:   #ffffff;
+  --text-primary:   #e8e8d8;
   --text-secondary: #9b9b9b;
   --text-muted:     #555555;
+  --color-forest:    #b4cdb8;
+  --color-terracotta:#ffb4a5;
+  --color-cream:     #1f1f1f;
 }
 
 /* ── TipTap ──────────────────────────────────────────────────── */
@@ -63,23 +80,72 @@
   height: 0;
 }
 
+/* ── Modal animations ────────────────────────────────────────── */
+/* ── Page fade-in ────────────────────────────────────────────── */
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: page-fade-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Backdrop & modal ────────────────────────────────────────── */
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+@keyframes modal-in-top {
+  from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)     scale(1);    }
+}
+
+.modal-backdrop {
+  animation: backdrop-in 0.15s ease forwards;
+}
+
+.modal-panel {
+  animation: modal-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-panel-top {
+  animation: modal-in-top 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Button base transitions ─────────────────────────────────── */
+.btn-icon {
+  transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
 /* ── Sidebar item hover (CSS-based, no JS jitter) ───────────── */
 .sidebar-item {
   color: var(--text-secondary);
   background: transparent;
-  transition: background 0.08s, color 0.08s;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.1s ease;
 }
 .sidebar-item:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
 .sidebar-item.is-active {
+  background: var(--color-forest);
+  color: var(--color-cream);
+  font-weight: 500;
+}
+:root.dark .sidebar-item.is-active {
   background: var(--bg-active);
   color: var(--text-primary);
 }
 .sidebar-item.is-drop-over {
   background: var(--bg-active);
-  outline: 2px solid #3b82f6;
+  outline: 2px solid var(--color-terracotta);
   outline-offset: -2px;
 }
 

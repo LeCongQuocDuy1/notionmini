@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { AlertTriangle } from 'lucide-react';
 
 interface Props {
   title: string;
@@ -28,42 +27,89 @@ export default function ConfirmDialog({
   }, [onConfirm, onCancel]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onCancel}>
+    <div
+      className="modal-backdrop fixed inset-0 z-100 flex items-center justify-center p-4"
+      style={{ background: 'rgba(27,48,34,0.55)', backdropFilter: 'blur(6px)' }}
+      onClick={onCancel}
+    >
       <div
-        className="border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5 flex flex-col gap-4"
-        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
-        onClick={(e) => e.stopPropagation()}
+        className="modal-panel w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
+        style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border)' }}
+        onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-start gap-3">
-          <div className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center" style={{ background: danger ? 'rgba(239,68,68,0.12)' : 'var(--bg-hover)' }}>
-            <AlertTriangle size={18} className={danger ? 'text-red-400' : ''} style={!danger ? { color: 'var(--text-secondary)' } : {}} />
-          </div>
-          <div>
-            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</p>
-            {description && (
-              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{description}</p>
-            )}
-          </div>
-        </div>
+        {/* ── Accent bar ───────────────────────────────────────── */}
+        <div
+          className="h-1 w-full"
+          style={{ background: danger ? 'var(--color-terracotta)' : 'var(--color-forest)' }}
+        />
 
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="px-3 py-1.5 rounded-md text-sm transition-colors"
-            style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-          >
-            Hủy
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-            style={danger
-              ? { background: '#dc2626', color: '#fff' }
-              : { background: 'var(--bg-active)', color: 'var(--text-primary)' }
-            }
-          >
-            {confirmLabel}
-          </button>
+        <div className="p-6">
+          {/* Icon + text */}
+          <div className="flex items-start gap-4 mb-6">
+            <div
+              className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+              style={{
+                background: danger ? 'rgba(159,64,45,0.12)' : 'rgba(27,48,34,0.1)',
+              }}
+            >
+              {danger ? (
+                /* Flame/warning icon hand-drawn style */
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-terracotta)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-forest)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3
+                className="font-serif text-base font-semibold leading-snug"
+                style={{ color: 'var(--color-forest)' }}
+              >
+                {title}
+              </h3>
+              {description && (
+                <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                  {description}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex items-center justify-end gap-2.5">
+            <button
+              onClick={onCancel}
+              className="px-4 py-2 rounded-full text-sm font-medium transition-all"
+              style={{
+                background: 'var(--bg-hover)',
+                color: 'var(--text-secondary)',
+                transition: 'background 0.12s ease',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-active)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+            >
+              Hủy
+            </button>
+            <button
+              onClick={onConfirm}
+              className="px-4 py-2 rounded-full text-sm font-semibold text-white transition-all"
+              style={{
+                background: danger ? 'var(--color-terracotta)' : 'var(--color-forest)',
+                transition: 'opacity 0.12s ease, transform 0.12s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1.02)'; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              {confirmLabel}
+            </button>
+          </div>
         </div>
       </div>
     </div>

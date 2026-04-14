@@ -139,8 +139,6 @@ export default function Sidebar() {
     toast.success('Đã tạo trang mới');
   };
 
-  const btnBase: React.CSSProperties = { color: 'var(--text-secondary)' };
-
   return (
     <>
       <aside

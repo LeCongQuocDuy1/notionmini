@@ -343,7 +343,7 @@ export default function DocumentEditor({ documentId }: Props) {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto relative" style={{ background: 'var(--bg-app)' }}>
+    <div className="page-enter flex-1 flex flex-col overflow-auto relative" style={{ background: 'var(--bg-app)' }}>
       {/* Tiny top bar — only archive button */}
       <div className="sticky top-0 z-10 flex justify-end px-4 py-1.5 border-b" style={{ background: 'var(--bg-app)', borderColor: 'var(--border)' }}>
         <button

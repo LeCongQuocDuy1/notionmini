@@ -169,8 +169,8 @@ export default function EditorHeader({ document, documentId }: Props) {
             key={document.id}
             placeholder="Untitled"
             onChange={handleTitleChange}
-            className="w-full bg-transparent text-4xl font-bold placeholder-(--text-muted) outline-none border-none resize-none"
-            style={{ color: 'var(--text-primary)' }}
+            className="w-full bg-transparent text-4xl font-serif font-semibold italic placeholder-(--text-muted) outline-none border-none resize-none"
+            style={{ color: 'var(--color-forest)' }}
           />
         </div>
       </div>

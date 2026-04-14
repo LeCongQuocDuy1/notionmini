@@ -73,7 +73,7 @@ export default function SidebarItem({ document, level, activeDragId }: Props) {
 
   const rowClasses = [
     'sidebar-item',
-    'group flex items-center gap-1 rounded-md px-2 py-1 cursor-pointer text-sm select-none',
+    'group flex items-center gap-1 rounded-lg px-2 py-1.5 cursor-pointer text-sm select-none',
     isActive ? 'is-active' : '',
     isOver && !isBeingDragged ? 'is-drop-over' : '',
   ].filter(Boolean).join(' ');
