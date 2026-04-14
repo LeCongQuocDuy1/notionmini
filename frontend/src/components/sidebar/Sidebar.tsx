@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Settings, Trash, LogOut, Search, FileText } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ import { useDocuments, useCreateDocument, useMoveDocument } from '../../hooks/us
 import SidebarItem from './SidebarItem';
 import TrashModal from '../TrashModal';
 import SearchModal from '../SearchModal';
+import ConfirmDialog from '../ConfirmDialog';
 import { SidebarSkeleton } from '../SkeletonLoader';
 import type { Document } from '../../types';
 
@@ -61,6 +62,8 @@ export default function Sidebar() {
 
   const [showTrash, setShowTrash] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const handleLogout = useCallback(() => { logout(); }, [logout]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const isOnSettings = location.pathname === '/settings';
 
@@ -242,30 +245,12 @@ export default function Sidebar() {
           )}
         </div>
 
-        {/* ── New page button ───────────────────────────────────── */}
-        <div className="px-3 pb-3">
-          <button
-            onClick={handleCreateRoot}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold shadow-md transition-all"
-            style={{
-              background: 'var(--color-terracotta)',
-              color: '#fff',
-              transition: 'opacity 0.15s ease, transform 0.15s ease',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'scale(1.02)'; }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; }}
-          >
-            <FileText size={14} />
-            Trang mới
-          </button>
-        </div>
-
         {/* ── Footer ───────────────────────────────────────────── */}
         <div className="px-3 pb-4 pt-2 space-y-0.5 border-t" style={{ borderColor: 'var(--border)' }}>
           {[
             { icon: <Trash size={14} />, label: 'Thùng rác', onClick: () => setShowTrash(true), danger: false, active: false },
             { icon: <Settings size={14} />, label: 'Cài đặt', onClick: () => navigate('/settings'), danger: false, active: isOnSettings },
-            { icon: <LogOut size={14} />, label: 'Đăng xuất', onClick: logout, danger: true, active: false },
+            { icon: <LogOut size={14} />, label: 'Đăng xuất', onClick: () => setShowLogoutConfirm(true), danger: true, active: false },
           ].map(({ icon, label, onClick, danger, active }) => (
             <button
               key={label}
@@ -296,6 +281,16 @@ export default function Sidebar() {
 
       {showTrash && <TrashModal onClose={() => setShowTrash(false)} />}
       {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
+      {showLogoutConfirm && (
+        <ConfirmDialog
+          title="Đăng xuất khỏi Notion Mini?"
+          description="Bạn sẽ cần đăng nhập lại để tiếp tục."
+          confirmLabel="Đăng xuất"
+          danger={false}
+          onConfirm={handleLogout}
+          onCancel={() => setShowLogoutConfirm(false)}
+        />
+      )}
     </>
   );
 }

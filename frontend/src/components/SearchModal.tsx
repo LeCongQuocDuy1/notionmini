@@ -61,15 +61,30 @@ export default function SearchModal({ onClose }: Props) {
 
   return (
     <div
-      className="modal-backdrop fixed inset-0 z-50 flex items-start justify-center pt-20 px-4"
+      className="modal-backdrop fixed inset-0 z-50 flex items-start justify-center md:pt-20 md:px-4"
       style={{ background: 'rgba(27,48,34,0.45)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}
     >
+      {/* Mobile: full-screen. Desktop: centered panel */}
       <div
-        className="modal-panel-top w-full max-w-xl overflow-hidden rounded-2xl shadow-2xl"
+        className="modal-panel-top w-full h-full md:h-auto md:max-w-xl overflow-hidden md:rounded-2xl shadow-2xl flex flex-col"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border)' }}
         onClick={e => e.stopPropagation()}
       >
+        {/* ── Mobile top bar ────────────────────────────────────── */}
+        <div
+          className="md:hidden flex items-center justify-between px-4 pt-4 pb-2"
+        >
+          <span className="font-serif text-sm font-semibold" style={{ color: 'var(--color-forest)' }}>Tìm kiếm</span>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-full"
+            style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
         {/* ── Search input ─────────────────────────────────────── */}
         <div
           className="flex items-center gap-3 px-5 py-4 border-b"
@@ -106,7 +121,7 @@ export default function SearchModal({ onClose }: Props) {
         </div>
 
         {/* ── Results ──────────────────────────────────────────── */}
-        <div className="max-h-80 overflow-y-auto">
+        <div className="flex-1 md:max-h-80 overflow-y-auto">
           {isLoading ? (
             <div className="py-10 flex flex-col items-center gap-2">
               {/* Animated seed dots */}

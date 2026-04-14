@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react';
-import { ChevronRight, FileText, Plus, Trash2, GripVertical, CornerLeftUp } from 'lucide-react';
+import { ChevronRight, FileText, Trash2, CornerLeftUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { useDocumentStore } from '../../stores/useDocumentStore';
-import { useDocuments, useCreateDocument, useArchiveDocument } from '../../hooks/useDocuments';
+import { useDocuments, useArchiveDocument } from '../../hooks/useDocuments';
 import ConfirmDialog from '../ConfirmDialog';
 import type { Document } from '../../types';
 
@@ -18,7 +18,6 @@ export default function SidebarItem({ document, level, activeDragId }: Props) {
   const [showConfirm, setShowConfirm] = useState(false);
   const { activeDocumentId, setActiveDocument } = useDocumentStore();
   const { data: documents = [] } = useDocuments();
-  const createDocument = useCreateDocument();
   const archiveDocument = useArchiveDocument();
 
   // Drag — always enabled for all levels
@@ -49,14 +48,6 @@ export default function SidebarItem({ document, level, activeDragId }: Props) {
   const isActive = activeDocumentId === document.id;
   const isBeingDragged = activeDragId === document.id;
 
-  const handleCreate = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newDoc = await createDocument.mutateAsync(document.id);
-    setActiveDocument(newDoc.id);
-    setIsExpanded(true);
-    toast.success('Đã tạo trang con mới');
-  };
-
   const handleSelect = () => setActiveDocument(document.id);
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -86,20 +77,11 @@ export default function SidebarItem({ document, level, activeDragId }: Props) {
       >
         <div
           className={rowClasses}
-          style={{ paddingLeft: `${8 + level * 16}px` }}
+          style={{ paddingLeft: `${8 + level * 16}px`, cursor: 'grab' }}
           onClick={handleSelect}
+          {...attributes}
+          {...listeners}
         >
-          {/* Drag handle — all levels */}
-          <button
-            {...attributes}
-            {...listeners}
-            onClick={(e) => e.stopPropagation()}
-            className="shrink-0 w-4 h-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            <GripVertical size={12} />
-          </button>
-
           {/* Toggle expand */}
           <button
             onClick={handleToggle}
@@ -112,34 +94,32 @@ export default function SidebarItem({ document, level, activeDragId }: Props) {
             )}
           </button>
 
+          {/* Delete button — always visible, before title */}
+          <button
+            title="Xóa"
+            className="shrink-0 p-0.5 rounded transition-colors hover:bg-red-500/20"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#f87171'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+            onClick={(e) => { e.stopPropagation(); setShowConfirm(true); }}
+          >
+            <Trash2 size={13} />
+          </button>
+
           {/* Icon + Title */}
           <span className="shrink-0 text-base leading-none">
             {document.icon ?? <FileText size={14} />}
           </span>
           <span className="flex-1 truncate">{document.title || 'Untitled'}</span>
 
-          {/* Action buttons — opacity transition (no layout shift) */}
+          {/* Action buttons — show on hover */}
           <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
-            <button
-              onClick={handleCreate}
-              title="Tạo trang con"
-              className="p-0.5 rounded transition-colors hover:bg-black/10 dark:hover:bg-white/10"
-            >
-              <Plus size={13} />
-            </button>
-            <button
-              title="Xóa"
-              className="p-0.5 rounded text-red-400 transition-colors hover:bg-red-500/20"
-              onClick={(e) => { e.stopPropagation(); setShowConfirm(true); }}
-            >
-              <Trash2 size={13} />
-            </button>
             {/* Move to root — only shown for nested items */}
             {level > 0 && (
               <button
                 title="Chuyển lên root"
                 className="p-0.5 rounded transition-colors hover:bg-black/10 dark:hover:bg-white/10"
-                onClick={(e) => { e.stopPropagation(); /* handled by Sidebar via context */ (e.currentTarget as HTMLButtonElement).dispatchEvent(new CustomEvent('move-to-root', { detail: document.id, bubbles: true })); }}
+                onClick={(e) => { e.stopPropagation(); (e.currentTarget as HTMLButtonElement).dispatchEvent(new CustomEvent('move-to-root', { detail: document.id, bubbles: true })); }}
               >
                 <CornerLeftUp size={13} />
               </button>

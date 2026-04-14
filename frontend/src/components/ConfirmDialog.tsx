@@ -28,22 +28,28 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="modal-backdrop fixed inset-0 z-100 flex items-center justify-center p-4"
+      className="modal-backdrop fixed inset-0 z-100 flex items-end md:items-center justify-center md:p-4"
       style={{ background: 'rgba(27,48,34,0.55)', backdropFilter: 'blur(6px)' }}
       onClick={onCancel}
     >
+      {/* Mobile: bottom-sheet, Desktop: centered modal */}
       <div
-        className="modal-panel w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
+        className="modal-panel w-full md:max-w-sm rounded-t-3xl md:rounded-2xl shadow-2xl overflow-hidden"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border)' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* ── Accent bar ───────────────────────────────────────── */}
+        {/* ── Drag handle (mobile only) ─────────────────────────── */}
+        <div className="flex justify-center pt-3 pb-1 md:hidden">
+          <div className="w-10 h-1 rounded-full" style={{ background: 'var(--border)' }} />
+        </div>
+
+        {/* ── Accent bar (desktop only) ─────────────────────────── */}
         <div
-          className="h-1 w-full"
+          className="hidden md:block h-1 w-full"
           style={{ background: danger ? 'var(--color-terracotta)' : 'var(--color-forest)' }}
         />
 
-        <div className="p-6">
+        <div className="p-6 pb-8 md:pb-6">
           {/* Icon + text */}
           <div className="flex items-start gap-4 mb-6">
             <div
@@ -53,7 +59,6 @@ export default function ConfirmDialog({
               }}
             >
               {danger ? (
-                /* Flame/warning icon hand-drawn style */
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-terracotta)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                   <line x1="12" y1="9" x2="12" y2="13" />
@@ -83,14 +88,13 @@ export default function ConfirmDialog({
           </div>
 
           {/* Buttons */}
-          <div className="flex items-center justify-end gap-2.5">
+          <div className="flex items-center gap-2.5 flex-col-reverse md:flex-row md:justify-end">
             <button
               onClick={onCancel}
-              className="px-4 py-2 rounded-full text-sm font-medium transition-all"
+              className="w-full md:w-auto px-4 py-2.5 md:py-2 rounded-full text-sm font-medium transition-all"
               style={{
                 background: 'var(--bg-hover)',
                 color: 'var(--text-secondary)',
-                transition: 'background 0.12s ease',
               }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-active)'}
               onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-hover)'}
@@ -99,10 +103,9 @@ export default function ConfirmDialog({
             </button>
             <button
               onClick={onConfirm}
-              className="px-4 py-2 rounded-full text-sm font-semibold text-white transition-all"
+              className="w-full md:w-auto px-4 py-2.5 md:py-2 rounded-full text-sm font-semibold text-white transition-all"
               style={{
                 background: danger ? 'var(--color-terracotta)' : 'var(--color-forest)',
-                transition: 'opacity 0.12s ease, transform 0.12s ease',
               }}
               onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1.02)'; }}
               onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; }}
