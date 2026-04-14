@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sun, Moon, PanelLeft, PanelRight, User, Palette, Sliders } from 'lucide-react';
+import { ArrowLeft, Sun, Moon, PanelLeft, PanelRight, User, Palette, Sliders, Menu } from 'lucide-react';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useLayoutStore } from '../stores/useLayoutStore';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const { sidebarPosition, toggleSidebarPosition } = useLayoutStore();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<Tab>('general');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Workspace toggles — local UI state
   const [softFocus, setSoftFocus] = useState(true);
@@ -26,20 +27,52 @@ export default function SettingsPage() {
     { key: 'workspace',  label: 'Workspace', icon: <Sliders size={15} /> },
   ];
 
+  const isRightSidebar = sidebarPosition === 'right';
+
   return (
     <div
       className="h-screen flex overflow-hidden"
-      style={{ background: 'var(--bg-app)', flexDirection: sidebarPosition === 'right' ? 'row-reverse' : 'row' }}
+      style={{ background: 'var(--bg-app)', flexDirection: isRightSidebar ? 'row-reverse' : 'row' }}
     >
-      <Sidebar />
+      {/* Mobile backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          style={{ backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — drawer on mobile, static on md+ */}
+      <div
+        className={[
+          'fixed inset-y-0 z-50 transition-transform duration-300 ease-in-out',
+          isRightSidebar ? 'right-0' : 'left-0',
+          mobileSidebarOpen ? 'translate-x-0' : (isRightSidebar ? 'translate-x-full' : '-translate-x-full'),
+          'md:relative md:inset-auto md:translate-x-0 md:shrink-0 md:transition-none',
+          mobileSidebarOpen ? 'mobile-sidebar-shadow md:shadow-none' : '',
+          'sidebar-tablet',
+        ].join(' ')}
+      >
+        <Sidebar />
+      </div>
 
       {/* ── Main content ─────────────────────────────────────────── */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto min-w-0">
         {/* Top bar */}
         <div
-          className="sticky top-0 z-10 flex items-center gap-4 px-10 py-4 border-b"
+          className="sticky top-0 z-10 flex items-center gap-3 px-4 md:px-10 py-4 border-b"
           style={{ background: 'var(--bg-app)', borderColor: 'var(--border)' }}
         >
+          {/* Mobile: hamburger to open sidebar drawer */}
+          <button
+            className="md:hidden p-2 rounded-full transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
+            onClick={() => setMobileSidebarOpen(true)}
+          >
+            <Menu size={20} />
+          </button>
+
           <button
             onClick={() => navigate('/')}
             className="flex items-center gap-2 text-sm font-medium rounded-full px-3 py-1.5 transition-all"
@@ -53,10 +86,10 @@ export default function SettingsPage() {
         </div>
 
         {/* ── Page body ────────────────────────────────────────────── */}
-        <div className="page-enter max-w-4xl mx-auto px-10 py-10">
+        <div className="page-enter max-w-4xl mx-auto px-4 md:px-8 lg:px-10 py-6 md:py-10">
           {/* Editorial header */}
-          <header className="mb-10">
-            <h1 className="font-serif text-5xl font-semibold italic" style={{ color: 'var(--color-forest)' }}>
+          <header className="mb-8 md:mb-10">
+            <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl font-semibold italic" style={{ color: 'var(--color-forest)' }}>
               Atelier Preferences
             </h1>
             <p className="text-base mt-2" style={{ color: 'var(--text-muted)' }}>
@@ -65,21 +98,22 @@ export default function SettingsPage() {
           </header>
 
           {/* ── Two-column layout ─────────────────────────────────── */}
-          <div className="grid grid-cols-12 gap-8">
-            {/* Left sidebar nav */}
-            <nav className="col-span-3">
+          <div className="grid grid-cols-12 gap-4 md:gap-6 lg:gap-8">
+            {/* Left sidebar nav — horizontal pills on mobile, vertical on md+ */}
+            <nav className="col-span-12 md:col-span-4 lg:col-span-3">
               <p
-                className="text-[10px] font-bold uppercase tracking-widest px-3 pb-3"
+                className="text-[10px] font-bold uppercase tracking-widest px-3 pb-2 md:pb-3 hidden md:block"
                 style={{ color: 'var(--text-muted)' }}
               >
                 Tùy chỉnh
               </p>
-              <div className="flex flex-col gap-1">
+              {/* Mobile: horizontal scrollable tabs | Desktop: vertical list */}
+              <div className="flex flex-row md:flex-col gap-2 md:gap-1 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
                 {tabs.map(tab => (
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 rounded-full text-sm font-medium text-left transition-all"
+                    className="flex items-center gap-2 md:gap-2.5 px-4 py-2 md:py-2.5 rounded-full text-sm font-medium text-left transition-all whitespace-nowrap shrink-0"
                     style={{
                       background: activeTab === tab.key ? 'var(--color-forest)' : 'transparent',
                       color: activeTab === tab.key ? 'var(--color-cream)' : 'var(--text-secondary)',
@@ -107,7 +141,7 @@ export default function SettingsPage() {
             </nav>
 
             {/* Right panel */}
-            <div className="col-span-9 space-y-6">
+            <div className="col-span-12 md:col-span-8 lg:col-span-9 space-y-4 md:space-y-6">
               {activeTab === 'general' && <GeneralTab user={user} />}
               {activeTab === 'appearance' && (
                 <AppearanceTab
@@ -127,7 +161,7 @@ export default function SettingsPage() {
 
               {/* Footer actions */}
               <div
-                className="flex items-center justify-end gap-4 pt-6 border-t"
+                className="flex items-center justify-end gap-3 md:gap-4 pt-4 md:pt-6 border-t"
                 style={{ borderColor: 'var(--border)' }}
               >
                 <button
@@ -316,7 +350,7 @@ function Section({ title, description, children }: {
 }) {
   return (
     <section
-      className="rounded-2xl p-8 relative overflow-hidden"
+      className="rounded-2xl p-5 md:p-8 relative overflow-hidden"
       style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border)' }}
     >
       {/* Decorative blob */}
@@ -349,7 +383,7 @@ function ThemeCard({ active, onClick, preview, label, sub, icon }: {
   return (
     <button
       onClick={onClick}
-      className="rounded-2xl p-5 text-left transition-all border-2"
+      className="rounded-2xl p-4 md:p-5 text-left transition-all border-2"
       style={{
         background: 'var(--bg-surface)',
         borderColor: active ? 'var(--color-terracotta)' : 'var(--border)',

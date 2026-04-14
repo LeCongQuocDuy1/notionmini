@@ -224,6 +224,45 @@ body { font-family: var(--font-sans); }
   pointer-events: none;
 }
 
+/* ── Mobile responsive utilities ────────────────────────────── */
+
+/* Bottom navigation bar (mobile) */
+.mobile-bottom-nav {
+  background: color-mix(in srgb, var(--bg-sidebar) 88%, transparent);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid var(--border);
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Mobile sidebar drawer shadow */
+.mobile-sidebar-shadow {
+  box-shadow: 4px 0 40px rgba(0, 0, 0, 0.18);
+}
+:root.dark .mobile-sidebar-shadow {
+  box-shadow: 4px 0 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Pebble chip shapes (from design system) */
+.pebble-shape-1 { border-radius: 40% 60% 70% 30% / 50% 60% 40% 50%; }
+.pebble-shape-2 { border-radius: 60% 40% 30% 70% / 40% 50% 60% 50%; }
+
+/* Tablet sidebar narrower width */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sidebar-tablet aside {
+    width: 220px !important;
+  }
+}
+
+/* Safe area padding for content above mobile bottom nav */
+.mobile-content-padding {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 /* ── Image ───────────────────────────────────────────────────── */
 .tiptap img {
   max-width: 100%;

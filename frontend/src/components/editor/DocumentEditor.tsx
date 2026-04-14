@@ -15,15 +15,13 @@ import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough, Code,
   Heading1, Heading2, Heading3, Trash2, GripVertical,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useDocumentStore } from '../../stores/useDocumentStore';
-import { useDocument, useUpdateDocument, useArchiveDocument } from '../../hooks/useDocuments';
+import { useDocument, useUpdateDocument } from '../../hooks/useDocuments';
 import { useDebounce } from '../../hooks/useDebounce';
 import EditorHeader from './EditorHeader';
 import TaggingPanel from './TaggingPanel';
 import SlashCommandMenu from './SlashCommandMenu';
 import Breadcrumbs from '../Breadcrumbs';
-import ConfirmDialog from '../ConfirmDialog';
 import { EditorSkeleton } from '../SkeletonLoader';
 
 interface Props {
@@ -38,17 +36,15 @@ interface SlashMenuState {
 
 
 export default function DocumentEditor({ documentId }: Props) {
-  const { setActiveDocument } = useDocumentStore();
+  useDocumentStore();
   const { data: document, isLoading } = useDocument(documentId);
   const updateDocument = useUpdateDocument();
-  const archiveDocument = useArchiveDocument();
 
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
   const slashMenuRef = useRef(slashMenu);
   useEffect(() => { slashMenuRef.current = slashMenu; }, [slashMenu]);
 
-  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
-  const editorContainerRef = useRef<HTMLDivElement>(null);
+const editorContainerRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Block handle — use refs to avoid re-renders on every mousemove
@@ -319,12 +315,6 @@ export default function DocumentEditor({ documentId }: Props) {
     currentBlockNodeRef.current = null;
   };
 
-  const handleArchiveConfirm = async () => {
-    await archiveDocument.mutateAsync(documentId);
-    setActiveDocument(null);
-    setShowArchiveConfirm(false);
-    toast.success('Đã chuyển vào thùng rác');
-  };
 
   if (isLoading) {
     return (
@@ -344,20 +334,6 @@ export default function DocumentEditor({ documentId }: Props) {
 
   return (
     <div className="page-enter flex-1 flex flex-col overflow-auto relative" style={{ background: 'var(--bg-app)' }}>
-      {/* Tiny top bar — only archive button */}
-      <div className="sticky top-0 z-10 flex justify-end px-4 py-1.5 border-b" style={{ background: 'var(--bg-app)', borderColor: 'var(--border)' }}>
-        <button
-          onClick={() => setShowArchiveConfirm(true)}
-          title="Chuyển vào thùng rác"
-          className="flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors"
-          style={{ color: 'var(--text-muted)' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#f87171'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
-        >
-          <Trash2 size={13} /> Xóa trang
-        </button>
-      </div>
-
       {/* Breadcrumbs */}
       <Breadcrumbs documentId={documentId} />
 
@@ -437,16 +413,6 @@ export default function DocumentEditor({ documentId }: Props) {
         onChange={handleImageFile}
       />
 
-      {/* Archive confirm dialog */}
-      {showArchiveConfirm && (
-        <ConfirmDialog
-          title="Chuyển trang này vào thùng rác?"
-          description="Bạn có thể khôi phục lại từ thùng rác bất kỳ lúc nào."
-          confirmLabel="Xóa trang"
-          onConfirm={handleArchiveConfirm}
-          onCancel={() => setShowArchiveConfirm(false)}
-        />
-      )}
     </div>
   );
 }

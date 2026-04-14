@@ -70,7 +70,7 @@ export default function EditorHeader({ document, documentId }: Props) {
       >
         {/* Cover */}
         {coverValue ? (
-          <div className="relative w-full h-72 group">
+          <div className="relative w-full h-48 md:h-64 lg:h-72 group">
             {isCssBackground(coverValue) ? (
               <div className="w-full h-full" style={{ background: coverValue }} />
             ) : (
@@ -94,7 +94,7 @@ export default function EditorHeader({ document, documentId }: Props) {
         ) : null}
 
         {/* Content area */}
-        <div className="px-16 pt-8 pb-4">
+        <div className="px-4 pt-6 pb-3 md:px-8 md:pt-8 lg:px-16 lg:pb-4">
           {/* Icon */}
           {document.icon ? (
             <div className="relative inline-block mb-3 group">
@@ -145,7 +145,7 @@ export default function EditorHeader({ document, documentId }: Props) {
           {/* Emoji Picker */}
           {showEmojiPicker && (
             <div
-              className="absolute z-20 border rounded-lg p-3 shadow-xl grid grid-cols-10 gap-1 top-full left-16 mt-1"
+              className="absolute z-20 border rounded-lg p-3 shadow-xl grid grid-cols-10 gap-1 top-full left-4 md:left-8 lg:left-16 mt-1"
               style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
             >
               {EMOJI_LIST.map((emoji) => (
@@ -169,7 +169,7 @@ export default function EditorHeader({ document, documentId }: Props) {
             key={document.id}
             placeholder="Untitled"
             onChange={handleTitleChange}
-            className="w-full bg-transparent text-4xl font-serif font-semibold italic placeholder-(--text-muted) outline-none border-none resize-none"
+            className="w-full bg-transparent text-3xl md:text-4xl font-serif font-semibold italic placeholder-(--text-muted) outline-none border-none resize-none"
             style={{ color: 'var(--color-forest)' }}
           />
         </div>
